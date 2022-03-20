@@ -144,9 +144,15 @@ router.post('/create', authenticateJWT, async (req, res, next) => {
                 role: req.body.role
             };
             await Users.create(newUser);
+            let user = await Users.findOne({
+                where: {
+                    email: email
+                }
+            })
             res.status(201).json({
                 message: "User created successfully",
-                users: newUser
+                user: user
+
             });
         }
         catch {

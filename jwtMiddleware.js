@@ -3,7 +3,6 @@ const accessTokenSecret = 'myaccesstokensecret';
 
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    // if (req.header('X-AUTH-SECRET-KEY') == 'ROADTOSDET') {
     if (authHeader) {
         if (req.header('X-AUTH-SECRET-KEY') == 'ROADTOSDET') {
             const token = authHeader;
@@ -31,14 +30,5 @@ const authenticateJWT = (req, res, next) => {
         err.status = 401;
         throw err;
     }
-    // }
-    // else {
-    //     const err = new Error('Secret auth key validation failure!');
-    //     err.status = 401;
-    //     throw err;
-
-    // }
-
-
 };
 module.exports = { authenticateJWT }
