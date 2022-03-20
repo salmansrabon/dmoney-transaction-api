@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Transactions } = require('./sequelizeModel/Transactions');
 const { Users } = require('./sequelizeModel/Users');
-const { authenticateJWT } = require('../../jwtMiddleware');
+const { authenticateJWT } = require('../jwtMiddleware');
 
 const { sequelize } = require('./sequelizeModel/db');
 
@@ -73,7 +73,7 @@ router.get('/balance/:account', authenticateJWT, async (req, res, next) => {
     });
 });
 async function getBalance(account) {
-    var userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
+    var userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM Transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
     return parseInt(userBalance[0].dataValues.Balance);
 }
 router.post('/sendmoney', authenticateJWT, async (req, res, next) => {
@@ -172,7 +172,7 @@ router.post('/sendmoney', authenticateJWT, async (req, res, next) => {
     }
     else {
         res.status(404).json({
-            message: "Account does not exist"
+            message: "From/To Account does not exist"
         });
     }
 

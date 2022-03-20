@@ -9,9 +9,9 @@ app.use(morgan('dev'));
 app.use(bodyParser.json());
 // To route api controller
 
-const userRoutes = require('./api/routes/user');
+const userRoutes = require('./api/user');
 app.use('/user', userRoutes);
-const transactionRoutes = require('./api/routes/transaction');
+const transactionRoutes = require('./api/transaction');
 app.use('/transaction', transactionRoutes);
 
 // If user inputs wrong API URL then show in json format

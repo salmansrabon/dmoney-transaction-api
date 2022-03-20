@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { Users } = require('./sequelizeModel/Users.js');
 const { Transactions } = require('./sequelizeModel/Transactions');
-const { authenticateJWT } = require('../../jwtMiddleware');
+const { authenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
 
 const { sequelize } = require('./sequelizeModel/db');
@@ -33,7 +33,7 @@ router.get('/list', authenticateJWT, async (req, res, next) => {
                         balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0)
                     }
                 }))
-                
+
             });
         })
 });
@@ -80,7 +80,12 @@ router.get('/search', authenticateJWT, async (req, res, next) => {
                 res.status(200).json({
                     user: userInfo
                 });
-            })
+            }).catch(err => { res.status(404).json({ message: "User not found" }) })
+    }
+    else {
+        res.status(400).json({
+            message: "Please provide email, id or phone_number"
+        });
     }
 });
 router.get('/search/:role', authenticateJWT, async (req, res, next) => {
