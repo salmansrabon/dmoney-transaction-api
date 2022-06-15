@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { Users } = require('./sequelizeModel/Users.js');
 const { Transactions } = require('./sequelizeModel/Transactions');
-const { authenticateJWT } = require('../jwtMiddleware');
+const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
 
 const { sequelize } = require('./sequelizeModel/db');
@@ -14,7 +14,7 @@ router.get('/', (req, res, next) => {
         message: "Server is up"
     });
 });
-router.get('/list', authenticateJWT, async (req, res, next) => {
+router.get('/list', publicAuthenticateJWT, async (req, res, next) => {
     //get user list from db
     await Users.findAll()
         .then(async users => {
