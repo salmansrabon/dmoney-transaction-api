@@ -74,7 +74,7 @@ router.get('/balance/:account', authenticateJWT, async (req, res, next) => {
 });
 async function getBalance(account) {
     var userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM Transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
-    return parseInt(userBalance[0].dataValues.Balance);
+    return parseFloat(userBalance[0].dataValues.Balance);
 }
 router.post('/sendmoney', authenticateJWT, async (req, res, next) => {
 
@@ -214,9 +214,11 @@ router.post('/withdraw', authenticateJWT, async (req, res, next) => {
                 }
             })
             var feeRate = 0.01;
+            var commissionRate = 0.025;
             var withdrawFee = feeRate * amount;
-            if (withdrawFee <= 10) {
-                withdrawFee = 10;
+            var commission = commissionRate * amount;
+            if (withdrawFee <= 5) {
+                withdrawFee = 5;
             }
             else {
                 withdrawFee = feeRate * amount;
@@ -224,7 +226,7 @@ router.post('/withdraw', authenticateJWT, async (req, res, next) => {
             if (from_account_role.getDataValue('role') == "Customer" && to_account_role.getDataValue('role') == "Agent") {
                 var currentBalance = await getBalance(from_account);
                 // check if from_account has sufficient balance
-                if (currentBalance > 0 && amount <= currentBalance + withdrawFee) {
+                if (currentBalance > 0 && amount + withdrawFee <= currentBalance) {
                     if (amount >= 10) {
                         const debitTrnx = {
                             account: from_account,
@@ -242,7 +244,7 @@ router.post('/withdraw', authenticateJWT, async (req, res, next) => {
                             description: "Withdraw",
                             trnxId: trnxId,
                             debit: 0,
-                            credit: amount
+                            credit: amount + commission
                         }
                         await Transactions.create(debitTrnx)
                         await Transactions.create(creditTrnx)
@@ -318,6 +320,8 @@ router.post('/deposit', authenticateJWT, async (req, res, next) => {
             if (user_role.getDataValue('role') == "Agent") {
 
                 var currentBalance = await getBalance(from_account);
+                var commissionRate = 0.025;
+                var commission = commissionRate * amount;
                 // check if from_account has sufficient balance
                 if (currentBalance > 0 && amount <= currentBalance) {
                     if (amount >= 10) {
@@ -329,7 +333,7 @@ router.post('/deposit', authenticateJWT, async (req, res, next) => {
                             description: "Deposit",
                             trnxId: trnxId,
                             debit: amount,
-                            credit: 0
+                            credit: commission
                         }
                         const creditTrnx = {
                             account: to_account,
@@ -346,6 +350,7 @@ router.post('/deposit', authenticateJWT, async (req, res, next) => {
                         res.status(201).json({
                             message: "Deposit successful",
                             trnxId: trnxId,
+                            commission: commission,
                             currentBalance: await getBalance(from_account)
                         });
 

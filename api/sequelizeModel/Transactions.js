@@ -30,7 +30,7 @@ exports.Transactions = sequelize.define('Transactions', {
         allowNull: false
     },
     credit: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DOUBLE,
         allowNull: false
     }
 
