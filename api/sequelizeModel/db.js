@@ -1,6 +1,6 @@
 const { Sequelize } = require('sequelize');
-require('custom-env').env()
-//require('custom-env').env('dev')
+//require('custom-env').env()
+require('custom-env').env('dev')
 
 const db_name = process.env.DB_NAME;
 const db_user = process.env.DB_USER;

@@ -45,6 +45,7 @@ router.get('/search/:trnxId', authenticateJWT, async (req, res, next) => {
 });
 router.get('/statement/:account', authenticateJWT, async (req, res, next) => {
     // Search transaction list by user account
+    const userBalance = await getBalance(req.params.account);
     await Transactions.findAll({
         where: {
             account: req.params.account
@@ -53,7 +54,8 @@ router.get('/statement/:account', authenticateJWT, async (req, res, next) => {
         res.status(200).json({
             message: "Transaction list",
             count: transactions.length,
-            transactions: transactions
+            transactions: transactions,
+            balance: userBalance
         });
     }
     ).catch(e => {
@@ -74,7 +76,7 @@ router.get('/balance/:account', authenticateJWT, async (req, res, next) => {
 });
 async function getBalance(account) {
     var userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM Transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
-    return parseFloat(userBalance[0].dataValues.Balance);
+    return parseFloat(parseFloat(userBalance[0].dataValues.Balance).toFixed(2));
 }
 router.post('/sendmoney', authenticateJWT, async (req, res, next) => {
 
