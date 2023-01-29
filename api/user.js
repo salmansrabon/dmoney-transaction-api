@@ -43,54 +43,98 @@ async function getBalance(account) {
     userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
     return parseInt(userBalance[0].dataValues.Balance);
 }
-router.get('/search', authenticateJWT, async (req, res, next) => {
-    // search user by email or id
-    const { phone_number, email, id } = req.query;
-    if (email) {
-        await Users.findOne({
-            where: {
-                email: email
+//search by user id
+router.get('/search/id/:id', publicAuthenticateJWT, async (req, res, next) => {
+    //search user by id
+    const id = req.params.id;
+    await Users.findOne({
+        where: {
+            id: id
+        }
+    })
+        .then(async user => {
+            if (user) {
+                const userBalance = await Transactions.findAll({
+                    where: {
+                        account: user.phone_number
+                    }
+                });
+                res.status(200).json({
+                    message: "User found",
+                    user: {
+                        ...user.dataValues,
+                        balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0)
+                    }
+                });
+            } else {
+                res.status(404).json({
+                    message: "User not found"
+                });
             }
         })
-            .then(async users => {
-                const userInfo = { ...users.dataValues, balance: await getBalance(phone_number) }
-                res.status(200).json({
-                    user: userInfo
-                });
-            }).catch(err => { res.status(404).json({ message: "User not found" }) })
-    }
-    else if (id) {
-        await Users.findOne({
-            where: {
-                id: id
-            }
-        })
-            .then(async users => {
-                const userInfo = { ...users.dataValues, balance: await getBalance(phone_number) }
-                res.status(200).json({
-                    user: userInfo
-                });
-            }).catch(err => { res.status(404).json({ message: "User not found" }) })
-    }
-    else if (phone_number) {
-        await Users.findOne({
-            where: {
-                phone_number: phone_number
-            }
-        })
-            .then(async users => {
-                const userInfo = { ...users.dataValues, balance: await getBalance(phone_number) }
-                res.status(200).json({
-                    user: userInfo
-                });
-            }).catch(err => { res.status(404).json({ message: "User not found" }) })
-    }
-    else {
-        res.status(400).json({
-            message: "Please provide email, id or phone_number"
-        });
-    }
 });
+
+router.get('/search/phonenumber/:phone_number', authenticateJWT, async (req, res, next) => {
+    // search user by phonenumber
+    const phone_number = req.params.phone_number;
+    await Users.findOne({
+        where: {
+            phone_number: phone_number
+        }
+    })
+        .then(async user => {
+            if (user) {
+                const userBalance = await Transactions.findAll({
+                    where: {
+                        account: user.phone_number
+                    }
+                });
+                res.status(200).json({
+                    message: "User found",
+                    user: {
+                        ...user.dataValues,
+                        balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0)
+                    }
+                });
+            } else {
+                res.status(404).json({
+                    message: "User not found"
+                });
+            }
+        })
+});
+
+router.get('/search/email/:email', authenticateJWT, async (req, res, next) => {
+    //search user by email
+    const email = req.params.email;
+    await Users.findOne({
+        where: {
+            email: email
+        }
+    })
+        .then(async user => {
+            if (user) {
+                const userBalance = await Transactions.findAll({
+                    where: {
+                        account: user.phone_number
+                    }
+                });
+                res.status(200).json({
+                    message: "User found",
+                    user: {
+                        ...user.dataValues,
+                        balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0)
+                    }
+                });
+            } else {
+                res.status(404).json({
+                    message: "User not found"
+                });
+            }
+        })
+});
+
+
 router.get('/search/:role', authenticateJWT, async (req, res, next) => {
     //search user by role
     const role = req.params.role;
