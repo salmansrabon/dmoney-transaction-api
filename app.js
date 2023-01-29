@@ -11,8 +11,14 @@ app.use(bodyParser.json());
 
 const userRoutes = require('./api/user');
 app.use('/user', userRoutes);
-const transactionRoutes = require('./api/transaction');
+const transactionRoutes = require('./api/transaction/transactions');
 app.use('/transaction', transactionRoutes);
+const sendMoneyRoutes = require('./api/transaction/sendMoney');
+app.use('/transaction', sendMoneyRoutes);
+const withdrawRoutes = require('./api/transaction/withdraw');
+app.use('/transaction', withdrawRoutes);
+const depositRoutes = require('./api/transaction/deposit');
+app.use('/transaction', depositRoutes);
 
 // If user inputs wrong API URL then show in json format
 app.use((req, res, next) => {

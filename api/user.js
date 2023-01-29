@@ -6,6 +6,7 @@ const { Users } = require('./sequelizeModel/Users.js');
 const { Transactions } = require('./sequelizeModel/Transactions');
 const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
+const Joi = require('joi');
 
 const { sequelize } = require('./sequelizeModel/db');
 
@@ -51,11 +52,12 @@ router.get('/search', authenticateJWT, async (req, res, next) => {
                 email: email
             }
         })
-            .then(users => {
+            .then(async users => {
+                const userInfo = { ...users.dataValues, balance: await getBalance(phone_number) }
                 res.status(200).json({
-                    user: users
+                    user: userInfo
                 });
-            })
+            }).catch(err => { res.status(404).json({ message: "User not found" }) })
     }
     else if (id) {
         await Users.findOne({
@@ -63,11 +65,12 @@ router.get('/search', authenticateJWT, async (req, res, next) => {
                 id: id
             }
         })
-            .then(users => {
+            .then(async users => {
+                const userInfo = { ...users.dataValues, balance: await getBalance(phone_number) }
                 res.status(200).json({
-                    user: users
+                    user: userInfo
                 });
-            })
+            }).catch(err => { res.status(404).json({ message: "User not found" }) })
     }
     else if (phone_number) {
         await Users.findOne({
@@ -115,26 +118,29 @@ router.get('/search/:role', authenticateJWT, async (req, res, next) => {
 
 });
 router.post('/create', authenticateJWT, async (req, res, next) => {
-    const { email, phone_number } = req.body;
-    const email_exists = await Users.findOne({
-        where: {
-            email: email
-        }
-    });
-    const phone_number_exists = await Users.findOne({
-        where: {
-            phone_number: phone_number
-        }
-    });
-
-    if (email_exists || phone_number_exists) {
-        res.status(208).json({
-            message: "User already exists",
+    try {
+        const { email, phone_number } = req.body;
+        const email_exists = await Users.findOne({
+            where: {
+                email: email
+            }
+        });
+        const phone_number_exists = await Users.findOne({
+            where: {
+                phone_number: phone_number
+            }
         });
 
-    }
-    else {
-        try {
+        if (email_exists || phone_number_exists) {
+            res.status(208).json({
+                message: "User already exists",
+            });
+
+        }
+        else {
+
+            //if user does not exist then create user and all fields are mandatory
+
             const newUser = {
                 name: req.body.name,
                 email: req.body.email,
@@ -143,27 +149,38 @@ router.post('/create', authenticateJWT, async (req, res, next) => {
                 nid: req.body.nid,
                 role: req.body.role
             };
-            await Users.create(newUser);
-            let user = await Users.findOne({
-                where: {
-                    email: email
-                }
-            })
+            //if user doesn't input any field name then it should return validation error
+            const { error } = await validateUser(newUser);
+            if (error) {
+                return res.status(400).json({
+                    message: error.details[0].message
+                });
+            }
+            const user = await Users.create(newUser);
             res.status(201).json({
-                message: "User created successfully",
+                message: "User created",
                 user: user
-
             });
         }
-        catch {
-            res.status(500).json({
-                message: "Field missing"
-            });
-        }
-
+    } catch (err) {
+        res.status(500).json({
+            message: "Error creating user",
+            error: err
+        });
     }
 
 });
+async function validateUser(user) {
+    const schema = Joi.object({
+        name: Joi.string().min(3).max(50).required(),
+        email: Joi.string().min(5).max(255).required().email(),
+        password: Joi.string().min(4).max(1024).required(),
+        phone_number: Joi.string().min(11).max(11).required(),
+        nid: Joi.string().min(7).max(13).required(),
+        role: Joi.string().min(3).max(50).required()
+    });
+    return schema.validate(user);
+}
 router.put('/update/:id', authenticateJWT, async (req, res, next) => {
     // update user by id
     const { id } = req.params;
@@ -172,6 +189,7 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
             id: id
         }
     });
+    // check if user is found and then update user for all mandatory fields
     if (user) {
         try {
             const newUser = {
@@ -198,6 +216,12 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
             });
         }
     }
+    else {
+        res.status(404).json({
+            message: "User not found"
+        });
+    }
+
 
 });
 router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
@@ -235,7 +259,11 @@ router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
             });
         }
     }
-
+    else {
+        res.status(404).json({
+            message: "User not found"
+        });
+    }
 
 });
 router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
