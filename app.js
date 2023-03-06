@@ -17,6 +17,8 @@ const sendMoneyRoutes = require('./api/transaction/sendMoney');
 app.use('/transaction', sendMoneyRoutes);
 const withdrawRoutes = require('./api/transaction/withdraw');
 app.use('/transaction', withdrawRoutes);
+const paymentRoutes = require('./api/transaction/payment');
+app.use('/transaction', paymentRoutes);
 const depositRoutes = require('./api/transaction/deposit');
 app.use('/transaction', depositRoutes);
 

@@ -343,12 +343,20 @@ router.post('/login', async (req, res, next) => {
             email: email
         }
     });
+    //get user role by email
+    const userRole = await Users.findOne({
+        where: {
+            email: email
+        },
+        attributes: ['role']
+    });
     if (user) {
         if (user.password === password) {
             const token = jwt.sign({ email: user.email, password: user.password }, accessTokenSecret, { expiresIn: '30m' });
             res.status(200).json({
                 message: "Login successfully",
-                token: token
+                token: token,
+                role: userRole.role
             });
         }
         else {
