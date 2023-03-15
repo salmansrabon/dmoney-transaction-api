@@ -51,7 +51,7 @@ router.post('/payment', authenticateJWT, async (req, res, next) => {
             else {
                 paymentFee = feeRate * amount;
             }
-            if (from_account_role.getDataValue('role') == "Customer" && to_account_role.getDataValue('role') == "Merchant") {
+            if ((from_account_role.getDataValue('role') == "Customer" || from_account_role.getDataValue('role') == "Agent") && to_account_role.getDataValue('role') == "Merchant") {
                 var currentBalance = await getBalance(from_account);
                 // check if from_account has sufficient balance
                 if (currentBalance > 0 && amount + paymentFee <= currentBalance) {
@@ -100,7 +100,7 @@ router.post('/payment', authenticateJWT, async (req, res, next) => {
             }
             else {
                 res.status(208).json({
-                    message: "Customer can not Payment to another customer"
+                    message: "From A/C should be customer or agent and To A/C should be merchant type"
                 });
             }
 
