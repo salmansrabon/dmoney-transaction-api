@@ -236,6 +236,7 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
     // check if user is found and then update user for all mandatory fields
     if (user) {
         try {
+            // update user for all mandatory fields
             const newUser = {
                 name: req.body.name,
                 email: req.body.email,
@@ -244,15 +245,26 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
                 nid: req.body.nid,
                 role: req.body.role
             };
+
+            
+            
+            //if user doesn't input any field name then it should return validation error
+            const { error } = await validateUser(newUser);
+            if (error) {
+                return res.status(400).json({
+                    message: error.details[0].message
+                });
+            }
             await Users.update(newUser, {
                 where: {
                     id: id
                 }
             });
             res.status(200).json({
-                message: "User updated successfully",
+                message: "User updated",
                 user: newUser
             });
+    
         }
         catch {
             res.status(500).json({
@@ -279,6 +291,7 @@ router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
     });
     if (user) {
         try {
+            
             const newUser = {
                 name: name,
                 email: email,
