@@ -38,11 +38,11 @@ router.get('/list', publicAuthenticateJWT, async (req, res, next) => {
             });
         })
 });
-async function getBalance(account) {
-    var userBalance
-    userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
-    return parseInt(userBalance[0].dataValues.Balance);
-}
+// async function getBalance(account) {
+//     var userBalance
+//     userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
+//     return parseInt(userBalance[0].dataValues.Balance);
+// }
 //search by user id
 router.get('/search/id/:id', publicAuthenticateJWT, async (req, res, next) => {
     //search user by id
