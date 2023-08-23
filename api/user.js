@@ -246,8 +246,8 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
                 role: req.body.role
             };
 
-            
-            
+
+
             //if user doesn't input any field name then it should return validation error
             const { error } = await validateUser(newUser);
             if (error) {
@@ -264,7 +264,7 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
                 message: "User updated",
                 user: newUser
             });
-    
+
         }
         catch {
             res.status(500).json({
@@ -291,7 +291,7 @@ router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
     });
     if (user) {
         try {
-            
+
             const newUser = {
                 name: name,
                 email: email,
@@ -332,14 +332,22 @@ router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
         }
     });
     if (user) {
-        await Users.destroy({
-            where: {
-                id: id
-            }
-        });
-        res.status(200).json({
-            message: "User deleted successfully"
-        });
+        //if user phone_number is SYSTEM do not delete
+        if (user.phone_number === "SYSTEM" || user.email=="salman@roadtocareer.net" ) {
+            res.status(403).json({
+                message: "Cannot delete SYSTEM user or admin"
+            })
+        }
+        else {
+            await Users.destroy({
+                where: {
+                    id: id
+                }
+            });
+            res.status(200).json({
+                message: "User deleted successfully"
+            });
+        }
     }
     else {
         res.status(404).json({
