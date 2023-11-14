@@ -7,6 +7,7 @@ const { Transactions } = require('./sequelizeModel/Transactions');
 const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const multer = require('multer');
 
 const { sequelize } = require('./sequelizeModel/db');
 
@@ -392,4 +393,61 @@ router.post('/login', async (req, res, next) => {
         });
     }
 })
+
+//create an API to upload photo
+//photo size not more than 1MB
+
+// Multer configuration
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './uploads'); // Your image storage destination
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname); // Use the original file name for the uploaded file
+    }
+});
+
+const upload = multer({ storage: storage });
+
+router.post('/upload/:id', authenticateJWT, upload.single('image'), async (req, res, next) => {
+    // Your existing code to update the user with the uploaded photo
+    const { id } = req.params;
+    const user = await Users.findOne({
+        where: {
+            id: id
+        }
+    });
+
+    if (user) {
+        try {
+            const image = req.file; // Access the uploaded file via req.file
+            if (!image) {
+                return res.status(400).json({ message: 'No file uploaded' });
+            }
+
+            await Users.update({
+                photo: image.filename // Use image.filename instead of image.name
+            }, {
+                where: {
+                    id: id
+                }
+            });
+            
+            res.status(200).json({
+                message: 'Photo uploaded successfully',
+                photo: image.filename
+            });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({
+                message: 'Error uploading photo',
+                error: err.message
+            });
+        }
+    } else {
+        res.status(404).json({
+            message: 'User not found'
+        });
+    }
+});
 module.exports = router;

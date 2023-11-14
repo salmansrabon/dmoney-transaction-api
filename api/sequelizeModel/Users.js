@@ -27,6 +27,10 @@ exports.Users = sequelize.define('Users', {
     role: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    photo: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
     
 });
