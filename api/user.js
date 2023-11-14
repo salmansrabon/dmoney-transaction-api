@@ -407,7 +407,19 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 1024 * 1024 // Maximum file size of 1MB (in bytes)
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true); // Accept only image files
+        } else {
+            cb(new Error('Please upload an image file'));
+        }
+    }
+});
 
 router.post('/upload/:id', authenticateJWT, upload.single('image'), async (req, res, next) => {
     // Your existing code to update the user with the uploaded photo
