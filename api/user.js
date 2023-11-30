@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const { Users } = require('./sequelizeModel/Users.js');
 const { Transactions } = require('./sequelizeModel/Transactions');
 const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
-
-const { sequelize } = require('./sequelizeModel/db');
+const Sequelize = require('sequelize');
+require('custom-env').env('dev')
 
 router.get('/', (req, res, next) => {
     res.status(200).json({
@@ -39,11 +37,6 @@ router.get('/list', publicAuthenticateJWT, async (req, res, next) => {
             });
         })
 });
-// async function getBalance(account) {
-//     var userBalance
-//     userBalance = await sequelize.query("SELECT COALESCE(SUM(t.`credit`)-SUM(t.`debit`), 0) AS Balance FROM transactions t WHERE t.`account`='" + account + "'", { model: Transactions })
-//     return parseInt(userBalance[0].dataValues.Balance);
-// }
 //search by user id
 router.get('/search/id/:id', publicAuthenticateJWT, async (req, res, next) => {
     //search user by id
@@ -334,7 +327,7 @@ router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
     });
     if (user) {
         //if user phone_number is SYSTEM do not delete
-        if (user.phone_number === "SYSTEM" || user.email=="salman@roadtocareer.net" ) {
+        if (user.phone_number === "SYSTEM" || user.email == "salman@roadtocareer.net") {
             res.status(403).json({
                 message: "Cannot delete SYSTEM user or admin"
             })
@@ -356,43 +349,71 @@ router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
         });
     }
 })
-const accessTokenSecret = 'myaccesstokensecret';
-router.post('/login', async (req, res, next) => {
-    // user login by email and password
-    const { email, password } = req.body;
-    const user = await Users.findOne({
-        where: {
-            email: email
-        }
-    });
-    //get user role by email
-    const userRole = await Users.findOne({
-        where: {
-            email: email
-        },
-        attributes: ['role']
-    });
-    if (user) {
-        if (user.password === password) {
-            const token = jwt.sign({ email: user.email, password: user.password }, accessTokenSecret, { expiresIn: '30m' });
-            res.status(200).json({
-                message: "Login successfully",
-                token: token,
-                role: userRole.role
-            });
+const accessTokenSecret = process.env.accessTokenSecret;
+router.post('/login', validateLoginData, async (req, res, next) => {
+    try {
+        const { emailOrPhoneNumber, password } = req.validatedData;
+        const user = await Users.findOne({
+            where: {
+                [Sequelize.Op.or]: [
+                    { email: emailOrPhoneNumber },
+                    { phone_number: emailOrPhoneNumber }
+                ]
+            }
+        });
+        //get user role by email or phone number
+        const userRole = await Users.findOne({
+            where: {
+                [Sequelize.Op.or]: [
+                    { email: emailOrPhoneNumber },
+                    { phone_number: emailOrPhoneNumber }
+                ]
+            },
+            attributes: ['role']
+        });
+        if (user) {
+            if (user.password === password) {
+                const token = jwt.sign({ identifier: emailOrPhoneNumber, password }, accessTokenSecret, { expiresIn: process.env.expires_in });
+                res.status(200).json({
+                    message: "Login successfully",
+                    token: token,
+                    role: userRole.role,
+                    expiresIn: process.env.expires_in
+                });
+            }
+            else {
+                res.status(401).json({
+                    message: "Password incorrect"
+                });
+            }
         }
         else {
-            res.status(401).json({
-                message: "Password incorrect"
+            res.status(404).json({
+                message: "User not found"
             });
         }
     }
-    else {
-        res.status(404).json({
-            message: "User not found"
+    catch (error) {
+        console.error("Error occurred:", error);
+        res.status(500).json({
+            message: "An error occurred while processing the request"
         });
     }
-})
+});
+function validateLoginData(req, res, next) {
+    const { emailOrPhoneNumber, password } = req.body;
+
+    if (!emailOrPhoneNumber || !password) {
+        return res.status(400).json({
+            message: "Please check the request body and try again"
+        });
+    }
+
+    // Optionally, add further validation rules here
+
+    req.validatedData = { emailOrPhoneNumber, password };
+    next();
+}
 
 //create an API to upload photo
 //photo size not more than 1MB
@@ -444,7 +465,7 @@ router.post('/upload/:id', authenticateJWT, upload.single('image'), async (req, 
                     id: id
                 }
             });
-            
+
             res.status(200).json({
                 message: 'Photo uploaded successfully',
                 photo: image.filename
