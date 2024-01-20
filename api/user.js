@@ -352,12 +352,12 @@ router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
 const accessTokenSecret = process.env.accessTokenSecret;
 router.post('/login', validateLoginData, async (req, res, next) => {
     try {
-        const { emailOrPhoneNumber, password } = req.validatedData;
+        const { email, password } = req.validatedData;
         const user = await Users.findOne({
             where: {
                 [Sequelize.Op.or]: [
-                    { email: emailOrPhoneNumber },
-                    { phone_number: emailOrPhoneNumber }
+                    { email: email },
+                    { phone_number: email }
                 ]
             }
         });
@@ -365,15 +365,15 @@ router.post('/login', validateLoginData, async (req, res, next) => {
         const userRole = await Users.findOne({
             where: {
                 [Sequelize.Op.or]: [
-                    { email: emailOrPhoneNumber },
-                    { phone_number: emailOrPhoneNumber }
+                    { email: email },
+                    { phone_number: email }
                 ]
             },
             attributes: ['role']
         });
         if (user) {
             if (user.password === password) {
-                const token = jwt.sign({ identifier: emailOrPhoneNumber, password }, accessTokenSecret, { expiresIn: process.env.expires_in });
+                const token = jwt.sign({ identifier: email, password }, accessTokenSecret, { expiresIn: process.env.expires_in });
                 res.status(200).json({
                     message: "Login successfully",
                     token: token,
@@ -401,9 +401,9 @@ router.post('/login', validateLoginData, async (req, res, next) => {
     }
 });
 function validateLoginData(req, res, next) {
-    const { emailOrPhoneNumber, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!emailOrPhoneNumber || !password) {
+    if (!email || !password) {
         return res.status(400).json({
             message: "Please check the request body and try again"
         });
@@ -411,7 +411,7 @@ function validateLoginData(req, res, next) {
 
     // Optionally, add further validation rules here
 
-    req.validatedData = { emailOrPhoneNumber, password };
+    req.validatedData = { email, password };
     next();
 }
 
