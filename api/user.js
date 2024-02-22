@@ -376,7 +376,7 @@ router.post('/login', validateLoginData, async (req, res, next) => {
                 const token = jwt.sign({ identifier: email, password }, accessTokenSecret, { expiresIn: process.env.expires_in });
                 res.status(200).json({
                     message: "Login successfully",
-                    token: token,
+                    token: `${token}`,
                     role: userRole.role,
                     expiresIn: process.env.expires_in
                 });

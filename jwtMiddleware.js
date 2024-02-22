@@ -1,10 +1,13 @@
 const jwt = require('jsonwebtoken');
-const accessTokenSecret = 'myaccesstokensecret';
+require ('dotenv').config();
+const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+const partnerKey = process.env.PARTNER_KEY;
+
 
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader) {
-        if (req.header('X-AUTH-SECRET-KEY') == 'ROADTOSDET') {
+        if (req.header('X-AUTH-SECRET-KEY') == partnerKey) {
             const token = authHeader;
 
             jwt.verify(token, accessTokenSecret, (err, user) => {
