@@ -355,21 +355,8 @@ router.post('/login', validateLoginData, async (req, res, next) => {
         const { email, password } = req.validatedData;
         const user = await Users.findOne({
             where: {
-                [Sequelize.Op.or]: [
-                    { email: email },
-                    { phone_number: email }
-                ]
+                email: email
             }
-        });
-        //get user role by email or phone number
-        const userRole = await Users.findOne({
-            where: {
-                [Sequelize.Op.or]: [
-                    { email: email },
-                    { phone_number: email }
-                ]
-            },
-            attributes: ['role']
         });
         if (user) {
             if (user.password === password) {
@@ -377,7 +364,7 @@ router.post('/login', validateLoginData, async (req, res, next) => {
                 res.status(200).json({
                     message: "Login successfully",
                     token: `${token}`,
-                    role: userRole.role,
+                    role: user.role,
                     expiresIn: process.env.expires_in
                 });
             }
@@ -400,6 +387,7 @@ router.post('/login', validateLoginData, async (req, res, next) => {
         });
     }
 });
+
 function validateLoginData(req, res, next) {
     const { email, password } = req.body;
 
