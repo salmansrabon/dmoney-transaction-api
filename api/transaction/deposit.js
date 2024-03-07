@@ -4,8 +4,6 @@ const { Transactions } = require('../sequelizeModel/Transactions');
 const { Users } = require('../sequelizeModel/Users');
 const { authenticateJWT } = require('../../jwtMiddleware');
 const { getBalance } = require('./getBalance')
-const { sequelize } = require('../sequelizeModel/db');
-const { and } = require('sequelize');
 
 
 router.post('/deposit', authenticateJWT, async (req, res, next) => {

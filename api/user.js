@@ -6,7 +6,6 @@ const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
-const Sequelize = require('sequelize');
 require('custom-env').env('dev')
 
 router.get('/', (req, res, next) => {
@@ -383,7 +382,7 @@ router.post('/login', validateLoginData, async (req, res, next) => {
     catch (error) {
         console.error("Error occurred:", error);
         res.status(500).json({
-            message: "An error occurred while processing the request"
+            message: "An error occurred while processing the request"+"\n"+error
         });
     }
 });
