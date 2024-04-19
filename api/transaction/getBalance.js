@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { Transactions } = require('../sequelizeModel/Transactions');
 const { Users } = require('../sequelizeModel/Users');
-const { authenticateJWT } = require('../../jwtMiddleware');
 const { sequelize } = require('../sequelizeModel/db');
 
 async function getBalance(account) {
