@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Users } = require('./sequelizeModel/Users.js');
+const { Roles } = require('./sequelizeModel/Role.js');
 const { Transactions } = require('./sequelizeModel/Transactions');
 const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const jwt = require('jsonwebtoken');
@@ -155,57 +156,71 @@ router.get('/search/:role', authenticateJWT, async (req, res, next) => {
 
 });
 router.post('/create', authenticateJWT, async (req, res, next) => {
-    try {
-        const { email, phone_number } = req.body;
-        const email_exists = await Users.findOne({
-            where: {
-                email: email
-            }
-        });
-        const phone_number_exists = await Users.findOne({
-            where: {
-                phone_number: phone_number
-            }
-        });
-
-        if (email_exists || phone_number_exists) {
-            res.status(208).json({
-                message: "User already exists",
-            });
-
-        }
-        else {
-
-            //if user does not exist then create user and all fields are mandatory
-
-            const newUser = {
-                name: req.body.name,
-                email: req.body.email,
-                password: req.body.password,
-                phone_number: req.body.phone_number,
-                nid: req.body.nid,
-                role: req.body.role
-            };
-            //if user doesn't input any field name then it should return validation error
-            const { error } = await validateUser(newUser);
-            if (error) {
-                return res.status(400).json({
-                    message: error.details[0].message
-                });
-            }
-            const user = await Users.create(newUser);
-            res.status(201).json({
-                message: "User created",
-                user: user
-            });
-        }
-    } catch (err) {
-        res.status(500).json({
-            message: "Error creating user",
-            error: err
-        });
+    // Check if the logged-in user is an admin
+    if (req.user.role.toLowerCase() !== 'admin') {
+        return res.status(403).json({ message: 'Only admin can create new users' });
     }
 
+    console.log("Logged-in User Role: ", req.user.role);
+
+    try {
+        const { email, phone_number, role } = req.body;
+        console.log(role)
+
+        // Check if the provided role exists in the Role table
+        const roleExists = await Roles.findOne({
+            where: { role: role }
+        });
+        console.log(roleExists)
+
+        if (!roleExists) {
+            return res.status(400).json({
+                message: `Invalid role: ${role}. This role does not exist in the Role table.`
+            });
+        }
+
+        // Check if the email or phone number already exists
+        const emailExists = await Users.findOne({ where: { email: email } });
+        const phoneNumberExists = await Users.findOne({ where: { phone_number: phone_number } });
+
+        if (emailExists || phoneNumberExists) {
+            return res.status(208).json({
+                message: "User already exists",
+            });
+        }
+
+        // Create the new user if the role is valid and the user doesn't exist
+        const newUser = {
+            name: req.body.name,
+            email: req.body.email,
+            password: req.body.password,
+            phone_number: req.body.phone_number,
+            nid: req.body.nid,
+            role: role
+        };
+
+        // Validate the new user data
+        const { error } = await validateUser(newUser);
+        if (error) {
+            return res.status(400).json({
+                message: error.details[0].message
+            });
+        }
+
+        // Create the user in the database
+        const user = await Users.create(newUser);
+        res.status(201).json({
+            message: "User created",
+            user: user
+        });
+
+    } catch (err) {
+        console.error("Error creating user:", err);
+        res.status(500).json({
+            message: "Error creating user",
+            error: err.message
+        });
+    }
 });
 async function validateUser(user) {
     const schema = Joi.object({
@@ -219,6 +234,9 @@ async function validateUser(user) {
     return schema.validate(user);
 }
 router.put('/update/:id', authenticateJWT, async (req, res, next) => {
+    if (req.user.role.toLowerCase() !== 'admin') {
+        return res.status(403).json({ message: 'Only admin can update users' });
+    }
     // update user by id
     const { id } = req.params;
     const user = await Users.findOne({
@@ -274,6 +292,9 @@ router.put('/update/:id', authenticateJWT, async (req, res, next) => {
 
 });
 router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
+    if (req.user.role.toLowerCase() !== 'admin') {
+        return res.status(403).json({ message: 'Only admin can update users' });
+    }
     //update user by id or name or email
     const { id } = req.params;
     const { name, email, password, phone_number, nid, role } = req.body;
@@ -317,6 +338,9 @@ router.patch('/update/:id', authenticateJWT, async (req, res, next) => {
 
 });
 router.delete('/delete/:id', authenticateJWT, async (req, res, next) => {
+    if (req.user.role.toLowerCase() !== 'admin') {
+        return res.status(403).json({ message: 'Only admin can delete users' });
+    }
     // delete specific data by id
     const { id } = req.params;
     const user = await Users.findOne({
@@ -352,37 +376,44 @@ const accessTokenSecret = process.env.accessTokenSecret;
 router.post('/login', validateLoginData, async (req, res, next) => {
     try {
         const { email, password } = req.validatedData;
+        
+        // Find the user by email
         const user = await Users.findOne({
-            where: {
-                email: email
-            }
+            where: { email: email }
         });
+
+        // Check if the user exists
         if (user) {
+            // Directly compare plain-text passwords for testing purposes
             if (user.password === password) {
-                const token = jwt.sign({ identifier: email, password }, accessTokenSecret, { expiresIn: process.env.expires_in });
+                // Generate JWT token including role
+                const token = jwt.sign(
+                    { identifier: email, role: user.role }, // Added role here
+                    accessTokenSecret,
+                    { expiresIn: process.env.expires_in } // Expiration time from env variables
+                );
+
+                // Send response with token and role
                 res.status(200).json({
                     message: "Login successfully",
                     token: `${token}`,
-                    role: user.role,
+                    role: user.role, // Return role in response
                     expiresIn: process.env.expires_in
                 });
-            }
-            else {
+            } else {
                 res.status(401).json({
                     message: "Password incorrect"
                 });
             }
-        }
-        else {
+        } else {
             res.status(404).json({
                 message: "User not found"
             });
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error occurred:", error);
         res.status(500).json({
-            message: "An error occurred while processing the request"+"\n"+error
+            message: "An error occurred while processing the request: " + error.message
         });
     }
 });
