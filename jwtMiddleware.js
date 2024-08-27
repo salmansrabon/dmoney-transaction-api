@@ -9,8 +9,8 @@ const authenticateJWT = (req, res, next) => {
 
     if (authHeader) {
         if (req.header('X-AUTH-SECRET-KEY') === partnerKey) {
-            const token = authHeader;
-            //const token = authHeader.split(' ')[1];
+            //const token = authHeader;
+            const token = authHeader.split(' ')[1];
 
             jwt.verify(token, accessTokenSecret, (err, user) => {
                 if (err) {
@@ -34,7 +34,8 @@ const authenticateJWT = (req, res, next) => {
 const publicAuthenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader) {
-        const token = authHeader;
+        //const token = authHeader;
+        const token = authHeader.split(' ')[1];
         jwt.verify(token, accessTokenSecret, (err, user) => {
             if (err) {
                 const err = new Error('Token expired!');

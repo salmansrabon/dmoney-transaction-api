@@ -1,0 +1,222 @@
+openapi: 3.0.0
+info:
+  title: Transaction API
+  version: 1.0.0
+  description: API for managing transactions and user balances.
+
+servers:
+  - url: http://localhost:3000
+    description: Local server
+
+paths:
+  /:
+    get:
+      summary: Check server status
+      responses:
+        '200':
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Server is up
+
+  /list:
+    get:
+      summary: Get list of all transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Transaction list with count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction list
+                  count:
+                    type: integer
+                    example: 5
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Transactions not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction not found
+
+  /search/{trnxId}:
+    get:
+      summary: Search transaction by transaction ID
+      parameters:
+        - name: trnxId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID to search for
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Transaction list with count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction list
+                  count:
+                    type: integer
+                    example: 1
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction not found
+
+  /statement/{account}:
+    get:
+      summary: Get statement by account
+      parameters:
+        - name: account
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The account to get the statement for
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Transaction list with count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction list
+                  count:
+                    type: integer
+                    example: 10
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User not found
+
+  /limit/{account}:
+    get:
+      summary: Get user limit by account
+      parameters:
+        - name: account
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The account to get the user limit for
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User limit information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User limit
+                  limit:
+                    type: number
+                    example: 5000
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User not found
+
+  /balance/{account}:
+    get:
+      summary: Get user balance by account
+      parameters:
+        - name: account
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The account to get the user balance for
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User balance information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User balance
+                  balance:
+                    type: number
+                    example: 10000.0
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
