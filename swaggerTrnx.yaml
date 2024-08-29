@@ -213,7 +213,312 @@ paths:
                   message:
                     type: string
                     example: User not found
+  /deposit:
+    post:
+      summary: Deposit money to an account.
+      description: Allows an authenticated user with the role of "Agent" to deposit money to another account with certain restrictions.
+      operationId: deposit
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Data for depositing money to an account.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "0123456789"
+                  description: The phone number of the account making the deposit.
+                to_account:
+                  type: string
+                  example: "0987654321"
+                  description: The phone number of the account receiving the deposit.
+                amount:
+                  type: number
+                  example: 500
+                  description: The amount to deposit (must be between 10 and 10000).
+      responses:
+        '201':
+          description: Deposit was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Deposit successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  commission:
+                    type: number
+                    example: 12.5
+                  currentBalance:
+                    type: number
+                    example: 487.5
+        '208':
+          description: Non-successful conditions like insufficient balance, account mismatch, or role-based restrictions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Insufficient balance
+                  currentBalance:
+                    type: number
+                    example: 300.0
+        '404':
+          description: Account not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Account does not exist
+      tags:
+        - Transactions
+  /payment:
+    post:
+      summary: Process a payment transaction.
+      description: Allows an authenticated user (Customer or Agent) to make a payment to a Merchant account with payment fees and commission.
+      operationId: payment
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Payment transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "0123456789"
+                  description: The phone number of the account initiating the payment.
+                to_account:
+                  type: string
+                  example: "0987654321"
+                  description: The phone number of the account receiving the payment.
+                amount:
+                  type: number
+                  example: 500
+                  description: The amount to be paid (minimum 10 tk).
+      responses:
+        '201':
+          description: Payment was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Payment successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  fee:
+                    type: number
+                    example: 5.0
+                  currentBalance:
+                    type: number
+                    example: 487.5
+        '208':
+          description: Non-successful conditions like insufficient balance, invalid roles, or mismatched accounts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Insufficient balance
+                  currentBalance:
+                    type: number
+                    example: 300.0
+        '404':
+          description: Account not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Account does not exist
+      tags:
+        - Transactions
 
+  /sendmoney:
+    post:
+      summary: Send money between customer accounts.
+      description: Allows an authenticated customer to send money to another customer account, with a P2P fee applied.
+      operationId: sendMoney
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Send money transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "0123456789"
+                  description: The phone number of the account sending the money.
+                to_account:
+                  type: string
+                  example: "0987654321"
+                  description: The phone number of the account receiving the money.
+                amount:
+                  type: number
+                  example: 100
+                  description: The amount of money to send (minimum 10 tk).
+      responses:
+        '201':
+          description: Money transfer was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Send money successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  fee:
+                    type: number
+                    example: 5.0
+                  currentBalance:
+                    type: number
+                    example: 1500.0
+        '208':
+          description: Non-successful conditions such as insufficient balance, role restrictions, or same account used for both sender and receiver.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: From account and to account cannot be same
+                  currentBalance:
+                    type: number
+                    example: 900.0
+        '404':
+          description: One or both accounts do not exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: From/To Account does not exist
+      tags:
+        - Transactions  
+
+  /withdraw:
+    post:
+      summary: Withdraw money from customer account via agent.
+      description: Allows an authenticated customer to withdraw money through an agent account. Withdrawals incur a fee.
+      operationId: withdrawMoney
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Withdraw money transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "0123456789"
+                  description: The phone number of the customer account.
+                to_account:
+                  type: string
+                  example: "0987654321"
+                  description: The phone number of the agent account.
+                amount:
+                  type: number
+                  example: 100
+                  description: The amount of money to withdraw (minimum 10 tk).
+      responses:
+        '201':
+          description: Withdrawal was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Withdraw successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  fee:
+                    type: number
+                    example: 5.0
+                  currentBalance:
+                    type: number
+                    example: 1500.0
+        '208':
+          description: Non-successful conditions such as insufficient balance, minimum amount restrictions, or account role mismatches.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Minimum withdraw amount 10 tk
+                  currentBalance:
+                    type: number
+                    example: 900.0
+        '404':
+          description: One or both accounts do not exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Account does not exist
+      tags:
+        - Transactions          
 components:
   securitySchemes:
     BearerAuth:
