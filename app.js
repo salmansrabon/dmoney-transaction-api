@@ -3,10 +3,18 @@ const app = express();
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
-const { swaggerDocument } = require('./swagger.js');
+
+const { swaggerUserDocument, swaggerTrnxDocument } = require('./swagger');
 const swaggerUi = require('swagger-ui-express');
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// Separate middleware instances for each route
+const userSwaggerUi = swaggerUi.setup(swaggerUserDocument);
+const transactionSwaggerUi = swaggerUi.setup(swaggerTrnxDocument);
+
+app.use('/api-docs/user', swaggerUi.serveFiles(swaggerUserDocument), userSwaggerUi);
+app.use('/api-docs/transaction', swaggerUi.serveFiles(swaggerTrnxDocument), transactionSwaggerUi);
+
+app.use(express.urlencoded({ extended: true })); // <--- Add this line
 app.use(express.json());
 
 
