@@ -8,7 +8,6 @@ const paymentController = require('../controllers/transactions/payment.controlle
 
 const router = express.Router();
 
-router.get('/', transactionDetailsController.serverStatus);
 router.get('/list', authenticateJWT, transactionDetailsController.listTransactions);
 router.get('/search/:trnxId', authenticateJWT, transactionDetailsController.searchTransactionById);
 router.get('/statement/:account', authenticateJWT, transactionDetailsController.getStatementByAccount);

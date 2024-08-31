@@ -4,7 +4,6 @@ const userController = require('../controllers/users/user.controller.js');
 
 const router = express.Router();
 
-router.get('/', userController.serverStatus);
 router.get('/list', publicAuthenticateJWT, userController.listUsers);
 router.get('/search/id/:id', publicAuthenticateJWT, userController.searchUserById);
 router.get('/search/phonenumber/:phone_number', authenticateJWT, userController.searchUserByPhoneNumber);

@@ -1,6 +1,5 @@
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
@@ -19,9 +18,11 @@ app.use('/api-docs/transaction', swaggerUi.serveFiles(swaggerTrnxDocument), swag
 // Routes setup
 const userRoutes = require('./routes/user.route.js');
 const transactionRoutes = require('./routes/transaction.route.js');
+const defaultRoutes = require('./routes/default.route.js');
 
 app.use('/user', userRoutes);
 app.use('/transaction', transactionRoutes);
+app.use('/', defaultRoutes)
 
 // 404 error handling
 app.use((req, res, next) => {

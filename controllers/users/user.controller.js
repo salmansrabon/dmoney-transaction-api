@@ -13,12 +13,15 @@ exports.serverStatus = (req, res) => {
 // List all users with balance
 exports.listUsers = async (req, res) => {
     try {
-        const users = await Users.findAll();
+        const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+        const users = await Users.findAll({ limit });
         const userList = await Promise.all(users.map(async (user) => {
             const userBalance = await Transactions.findAll({ where: { account: user.phone_number } });
             return { ...user.dataValues, balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0) };
         }));
-        res.status(200).json({ message: "User list", count: users.length, users: userList });
+
+        res.status(200).json({ message: "User list", count: userList.length, users: userList });
     } catch (error) {
         console.error("Error listing users:", error);
         res.status(500).json({ message: "Error listing users" });

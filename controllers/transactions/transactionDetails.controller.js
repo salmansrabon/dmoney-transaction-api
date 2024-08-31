@@ -12,7 +12,13 @@ exports.serverStatus = (req, res, next) => {
 // List all transactions
 exports.listTransactions = async (req, res, next) => {
     try {
-        const transactions = await Transactions.findAll();
+        const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+        const transactions = await Transactions.findAll({
+            limit,
+            order: [['createdAt', 'DESC']], // Replace 'createdAt' with the column you want to sort by
+        });
+
         if (transactions.length > 0) {
             res.status(200).json({
                 message: "Transaction list",
@@ -20,13 +26,14 @@ exports.listTransactions = async (req, res, next) => {
                 transactions: transactions
             });
         } else {
-            res.status(404).json({ message: "Transaction not found" });
+            res.status(404).json({ message: "Transactions not found" });
         }
     } catch (e) {
         console.log(e);
         res.status(500).json({ message: "Error fetching transactions" });
     }
 };
+
 
 // Search transactions by ID
 exports.searchTransactionById = async (req, res, next) => {
