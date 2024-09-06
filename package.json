@@ -19,12 +19,12 @@
     "express": "^4.17.2",
     "joi": "^17.7.0",
     "js-yaml": "^4.1.0",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^2.3.0",
-    "nodemon": "^2.0.20",
-    "sequelize": "^6.6.5",
+    "nodemon": "^3.0.0",
+    "sequelize": "^6.33.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
   }
