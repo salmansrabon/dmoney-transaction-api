@@ -3,7 +3,7 @@ const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
 
 exports.handlePayment = async (req, res, next) => {
-    const { from_account, to_account, amount } = req.body;
+    const { from_account, to_account, amount, discount_code, discount_amount } = req.body;
     var trnxId = "TXN" + Math.floor(Math.random() * 1000000);
 
     const from_account_exists = await Users.findOne({ where: { phone_number: from_account } });
@@ -22,24 +22,34 @@ exports.handlePayment = async (req, res, next) => {
         var paymentFee = feeRate * amount;
         var commission = commissionRate * amount;
 
+        // Apply minimum payment fee
         if (paymentFee <= 5) {
             paymentFee = 5;
-        } else {
-            paymentFee = feeRate * amount;
+        }
+
+        // Apply discount if provided
+        let finalAmount = amount;
+        let discountApplied = false;
+        if (discount_code && discount_amount) {
+            const envDiscountCode = process.env.DISCOUNT_CODE; // assuming discount_code is stored in the env file
+            if (discount_code === envDiscountCode) {
+                finalAmount = amount - (amount * (discount_amount / 100));
+                discountApplied = true;
+            }
         }
 
         if ((from_account_role.getDataValue('role') === "Customer" || from_account_role.getDataValue('role') === "Agent") && to_account_role.getDataValue('role') === "Merchant") {
             var currentBalance = await getBalance(from_account);
 
-            if (currentBalance > 0 && amount + paymentFee <= currentBalance) {
-                if (amount >= 10) {
+            if (currentBalance > 0 && finalAmount + paymentFee <= currentBalance) {
+                if (finalAmount >= 10) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
                         to_account: to_account,
                         description: "Payment",
                         trnxId: trnxId,
-                        debit: amount + paymentFee,
+                        debit: finalAmount + paymentFee,
                         credit: 0
                     };
                     const creditTrnx = {
@@ -49,17 +59,25 @@ exports.handlePayment = async (req, res, next) => {
                         description: "Payment",
                         trnxId: trnxId,
                         debit: 0,
-                        credit: amount + commission
+                        credit: finalAmount + commission
                     };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
 
-                    return res.status(201).json({
+                    // Build the response object conditionally
+                    let response = {
                         message: "Payment successful",
                         trnxId: trnxId,
                         fee: paymentFee,
                         currentBalance: await getBalance(from_account),
-                    });
+                    };
+
+                    if (discountApplied) {
+                        response.discountedTotal = finalAmount;
+                        response.discountedAmount = amount - finalAmount;
+                    }
+
+                    return res.status(201).json(response);
                 } else {
                     return res.status(208).json({ message: "Minimum Payment amount is 10 tk" });
                 }
@@ -73,3 +91,4 @@ exports.handlePayment = async (req, res, next) => {
         return res.status(404).json({ message: "Account does not exist" });
     }
 };
+

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/users/user.controller.js');
+const defaultController= require('../controllers/default/default.controller.js')
 
-router.get('/', userController.serverStatus);
+router.get('/', defaultController.serverStatus);
 module.exports = router;

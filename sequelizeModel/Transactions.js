@@ -22,7 +22,7 @@ const Transactions = sequelize.define('Transactions', {
     trnxId: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: false
     },
     debit: {
         type: DataTypes.INTEGER,
