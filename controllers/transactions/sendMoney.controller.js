@@ -41,8 +41,18 @@ exports.handleSendMoney = async (req, res, next) => {
                         debit: 0,
                         credit: amount
                     };
+                    const creditTrnxToSystem = {
+                        account: "SYSTEM",
+                        from_account: from_account,
+                        to_account: "SYSTEM",
+                        description: "Sendmoney Service Charge",
+                        trnxId: trnxId,
+                        debit: 0,
+                        credit: p2pFee
+                    };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
+                    await Transactions.create(creditTrnxToSystem);
 
                     return res.status(201).json({
                         message: "Send money successful",
@@ -60,6 +70,11 @@ exports.handleSendMoney = async (req, res, next) => {
             return res.status(208).json({ message: "From/To account should not be an agent account" });
         }
     } else {
-        return res.status(404).json({ message: "From/To Account does not exist" });
+        if(!from_account_exists){
+            return res.status(404).json({ message: "From Account does not exist" });
+        }
+        else if(!to_account_exists){
+            return res.status(404).json({ message: "To Account does not exist" });
+        }
     }
 };

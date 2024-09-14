@@ -61,8 +61,18 @@ exports.handlePayment = async (req, res, next) => {
                         debit: 0,
                         credit: finalAmount + commission
                     };
+                    const creditTrnxToSystem = {
+                        account: "SYSTEM",
+                        from_account: from_account,
+                        to_account: "SYSTEM",
+                        description: "Payment Service Charge",
+                        trnxId: trnxId,
+                        debit: 0,
+                        credit: paymentFee
+                    };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
+                    await Transactions.create(creditTrnxToSystem);
 
                     // Build the response object conditionally
                     let response = {
@@ -88,7 +98,12 @@ exports.handlePayment = async (req, res, next) => {
             return res.status(208).json({ message: "From A/C should be customer or agent and To A/C should be merchant type" });
         }
     } else {
-        return res.status(404).json({ message: "Account does not exist" });
+        if(!from_account_exists){
+            return res.status(404).json({ message: "From Account does not exist" });
+        }
+        else if(!to_account_exists){
+            return res.status(404).json({ message: "To Account does not exist" });
+        }
     }
 };
 

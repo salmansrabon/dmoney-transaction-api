@@ -22,42 +22,52 @@ exports.handleDeposit = async (req, res, next) => {
             var commission = commissionRate * amount;
 
             if (currentBalance > 0 && amount <= currentBalance) {
-                const total_credit = await Transactions.sum('credit', { where: { to_account: to_account, description: "Deposit" } });
-                const total_debit = await Transactions.sum('debit', { where: { from_account: to_account, description: "Withdraw" } });
-                var limit_diff = total_credit - total_debit;
+                // Use getBalance to get the correct balance of `to_account`
+                var current_balance_to_account = await getBalance(to_account);
+                console.log(current_balance_to_account);
 
+                // Calculate remaining limit for the deposit
+                var remaining_limit = 10000 - current_balance_to_account;
+
+                // Check if `to_account` has already reached or exceeded 10,000 TK
+                if (current_balance_to_account >= 10000) {
+                    return res.status(208).json({ message: "Limit exceeded. You cannot deposit any more to this account." });
+                }
+
+                // Check if the deposit amount exceeds the remaining limit
+                if (amount > remaining_limit) {
+                    return res.status(208).json({ message: `Limit exceeded. You can deposit a maximum of ${remaining_limit.toFixed(2)} tk to this customer.` });
+                }
+
+                // Deposit process
                 if (amount >= 10 && amount <= 10000) {
-                    if (limit_diff + amount <= 10000) {
-                        const debitTrnx = {
-                            account: from_account,
-                            from_account: from_account,
-                            to_account: to_account,
-                            description: "Deposit Commission",
-                            trnxId: trnxId,
-                            debit: amount,
-                            credit: commission
-                        };
-                        const creditTrnx = {
-                            account: to_account,
-                            from_account: from_account,
-                            to_account: to_account,
-                            description: "Deposit",
-                            trnxId: trnxId,
-                            debit: 0,
-                            credit: amount
-                        };
-                        await Transactions.create(debitTrnx);
-                        await Transactions.create(creditTrnx);
+                    const debitTrnx = {
+                        account: from_account,
+                        from_account: from_account,
+                        to_account: to_account,
+                        description: "Deposit Commission",
+                        trnxId: trnxId,
+                        debit: amount,
+                        credit: commission
+                    };
+                    const creditTrnx = {
+                        account: to_account,
+                        from_account: from_account,
+                        to_account: to_account,
+                        description: "Deposit",
+                        trnxId: trnxId,
+                        debit: 0,
+                        credit: amount
+                    };
+                    await Transactions.create(debitTrnx);
+                    await Transactions.create(creditTrnx);
 
-                        return res.status(201).json({
-                            message: "Deposit successful",
-                            trnxId: trnxId,
-                            commission: commission,
-                            currentBalance: await getBalance(from_account)
-                        });
-                    } else {
-                        return res.status(208).json({ message: "Maximum limit exceeded. You can't deposit more than 10000 tk" });
-                    }
+                    return res.status(201).json({
+                        message: "Deposit successful",
+                        trnxId: trnxId,
+                        commission: commission,
+                        currentBalance: await getBalance(from_account)
+                    });
                 } else {
                     return res.status(208).json({ message: "Minimum deposit amount is 10 tk and maximum deposit amount is 10000 tk" });
                 }
@@ -68,6 +78,10 @@ exports.handleDeposit = async (req, res, next) => {
             return res.status(208).json({ message: "Only Agent can deposit money" });
         }
     } else {
-        return res.status(404).json({ message: "Account does not exist" });
+        if (!from_account_exists) {
+            return res.status(404).json({ message: "From Account does not exist" });
+        } else if (!to_account_exists) {
+            return res.status(404).json({ message: "To Account does not exist" });
+        }
     }
 };
