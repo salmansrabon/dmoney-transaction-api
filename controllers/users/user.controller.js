@@ -5,10 +5,6 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
 
-// Server status check
-exports.serverStatus = (req, res) => {
-    res.status(200).json({ message: "Server is up" });
-};
 
 // List all users with balance
 exports.listUsers = async (req, res) => {

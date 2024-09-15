@@ -1,6 +1,7 @@
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
+const jsonConfig=require('./config.json');
 
 exports.handleSendMoney = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
@@ -16,13 +17,14 @@ exports.handleSendMoney = async (req, res, next) => {
 
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
         const to_account_role = await Users.findOne({ where: { phone_number: to_account } });
-        var p2pFee = 5;
+        var p2pFee = jsonConfig.sendMoney.serviceFee;
+        var minAmount = jsonConfig.sendMoney.minAmount;
 
         if (from_account_role.getDataValue('role') === "Customer" && to_account_role.getDataValue('role') === "Customer") {
             var currentBalance = await getBalance(from_account);
 
-            if (currentBalance > 0 && amount <= currentBalance) {
-                if (amount >= 10) {
+            if (currentBalance > 0 && amount + p2pFee <= currentBalance) {
+                if (amount >= minAmount) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
@@ -41,8 +43,18 @@ exports.handleSendMoney = async (req, res, next) => {
                         debit: 0,
                         credit: amount
                     };
+                    const creditTrnxToSystem = {
+                        account: "SYSTEM",
+                        from_account: from_account,
+                        to_account: "SYSTEM",
+                        description: "Sendmoney Service Charge",
+                        trnxId: trnxId,
+                        debit: 0,
+                        credit: p2pFee
+                    };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
+                    await Transactions.create(creditTrnxToSystem);
 
                     return res.status(201).json({
                         message: "Send money successful",
@@ -51,7 +63,7 @@ exports.handleSendMoney = async (req, res, next) => {
                         currentBalance: await getBalance(from_account)
                     });
                 } else {
-                    return res.status(208).json({ message: "Minimum amount is 10 tk" });
+                    return res.status(208).json({ message: `Minimum amount is ${minAmount} tk` });
                 }
             } else {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
@@ -60,6 +72,11 @@ exports.handleSendMoney = async (req, res, next) => {
             return res.status(208).json({ message: "From/To account should not be an agent account" });
         }
     } else {
-        return res.status(404).json({ message: "From/To Account does not exist" });
+        if (!from_account_exists) {
+            return res.status(404).json({ message: "From Account does not exist" });
+        }
+        else if (!to_account_exists) {
+            return res.status(404).json({ message: "To Account does not exist" });
+        }
     }
 };

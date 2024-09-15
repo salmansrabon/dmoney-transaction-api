@@ -22,7 +22,7 @@ const defaultRoutes = require('./routes/default.route.js');
 
 app.use('/user', userRoutes);
 app.use('/transaction', transactionRoutes);
-app.use('/', defaultRoutes)
+app.use('/', defaultRoutes);
 
 // 404 error handling
 app.use((req, res, next) => {
