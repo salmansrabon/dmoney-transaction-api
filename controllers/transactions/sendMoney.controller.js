@@ -1,6 +1,7 @@
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
+const jsonConfig=require('./config.json');
 
 exports.handleSendMoney = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
@@ -16,8 +17,8 @@ exports.handleSendMoney = async (req, res, next) => {
 
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
         const to_account_role = await Users.findOne({ where: { phone_number: to_account } });
-        var p2pFee = 5;
-        var minAmount = 10;
+        var p2pFee = jsonConfig.sendMoney.serviceFee;
+        var minAmount = jsonConfig.sendMoney.minAmount;
 
         if (from_account_role.getDataValue('role') === "Customer" && to_account_role.getDataValue('role') === "Customer") {
             var currentBalance = await getBalance(from_account);

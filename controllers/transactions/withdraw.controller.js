@@ -1,6 +1,8 @@
+const { json } = require('body-parser');
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
+const jsonConfig=require('./config.json');
 
 exports.handleWithdraw = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
@@ -17,10 +19,11 @@ exports.handleWithdraw = async (req, res, next) => {
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
         const to_account_role = await Users.findOne({ where: { phone_number: to_account } });
 
-        var feeRate = 0.01;
-        var commissionRate = 0.025;
+        var feeRate = jsonConfig.withdraw.serviceFee;
+        var commissionRate = jsonConfig.withdraw.agentComission;
         var withdrawFee = feeRate * amount;
         var commission = commissionRate * amount;
+        var minAmount = jsonConfig.withdraw.minAmount;
 
         if (withdrawFee <= 5) {
             withdrawFee = 5;
@@ -32,7 +35,7 @@ exports.handleWithdraw = async (req, res, next) => {
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && amount + withdrawFee <= currentBalance) {
-                if (amount >= 10) {
+                if (amount >= minAmount) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
@@ -72,7 +75,7 @@ exports.handleWithdraw = async (req, res, next) => {
                     });
                 } else {
                     return res.status(208).json({ 
-                        message: "Minimum withdraw amount is 10 tk" ,
+                        message: `Minimum withdraw amount is ${minAmount} tk` ,
                         currentBalance: await getBalance(from_account)
                     });
                 }

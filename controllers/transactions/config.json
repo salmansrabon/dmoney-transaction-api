@@ -1,0 +1,21 @@
+{
+    "deposit":{
+        "agentComission":0.025,
+        "minAmount":10,
+        "maxLimit":10000
+    },
+    "payment":{
+        "serviceFee":0.01,
+        "minAmount":10,
+        "agentComission":0.025
+    },
+    "withdraw":{
+        "serviceFee":0.01,
+        "agentComission":0.025,
+        "minAmount":10
+    },
+    "sendMoney":{
+        "serviceFee":5,
+        "minAmount":10
+    }
+}

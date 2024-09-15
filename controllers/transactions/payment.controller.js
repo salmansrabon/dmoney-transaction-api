@@ -1,6 +1,7 @@
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
+const jsonConfig=require('./config.json');
 
 exports.handlePayment = async (req, res, next) => {
     const { from_account, to_account, amount, discount_code, discount_amount } = req.body;
@@ -17,8 +18,9 @@ exports.handlePayment = async (req, res, next) => {
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
         const to_account_role = await Users.findOne({ where: { phone_number: to_account } });
 
-        var feeRate = 0.01;
-        var commissionRate = 0.025;
+        var feeRate = jsonConfig.payment.serviceFee;
+        var commissionRate = jsonConfig.payment.agentComission;
+        var minAmount = jsonConfig.payment.minAmount;
         var paymentFee = feeRate * amount;
         var commission = commissionRate * amount;
 
@@ -42,7 +44,7 @@ exports.handlePayment = async (req, res, next) => {
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && finalAmount + paymentFee <= currentBalance) {
-                if (finalAmount >= 10) {
+                if (finalAmount >= minAmount) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
@@ -89,7 +91,7 @@ exports.handlePayment = async (req, res, next) => {
 
                     return res.status(201).json(response);
                 } else {
-                    return res.status(208).json({ message: "Minimum Payment amount is 10 tk" });
+                    return res.status(208).json({ message: `Minimum Payment amount is ${minAmount} tk` });
                 }
             } else {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });

@@ -1,10 +1,15 @@
+const { json } = require('body-parser');
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
+const jsonConfig=require('./config.json');
 
 exports.handleDeposit = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
     var trnxId = "TXN" + Math.floor(Math.random() * 1000000);
+    var minAmount = jsonConfig.deposit.minAmount;
+    var maxLimit = jsonConfig.deposit.maxLimit;
+    var commissionRate = jsonConfig.deposit.agentComission;
 
     const from_account_exists = await Users.findOne({ where: { phone_number: from_account } });
     const to_account_exists = await Users.findOne({ where: { phone_number: to_account } });
@@ -18,7 +23,6 @@ exports.handleDeposit = async (req, res, next) => {
 
         if (user_role.getDataValue('role') === "Agent") {
             var currentBalance = await getBalance(from_account);
-            var commissionRate = 0.025;
             var commission = commissionRate * amount;
 
             if (currentBalance > 0 && amount <= currentBalance) {
@@ -27,10 +31,10 @@ exports.handleDeposit = async (req, res, next) => {
                 console.log(current_balance_to_account);
 
                 // Calculate remaining limit for the deposit
-                var remaining_limit = 10000 - current_balance_to_account;
+                var remaining_limit = maxLimit - current_balance_to_account;
 
                 // Check if `to_account` has already reached or exceeded 10,000 TK
-                if (current_balance_to_account >= 10000) {
+                if (current_balance_to_account >= maxLimit) {
                     return res.status(208).json({ message: "Limit exceeded. You cannot deposit any more to this account." });
                 }
 
@@ -40,7 +44,7 @@ exports.handleDeposit = async (req, res, next) => {
                 }
 
                 // Deposit process
-                if (amount >= 10 && amount <= 10000) {
+                if (amount >= minAmount && amount <= maxLimit) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
@@ -69,7 +73,7 @@ exports.handleDeposit = async (req, res, next) => {
                         currentBalance: await getBalance(from_account)
                     });
                 } else {
-                    return res.status(208).json({ message: "Minimum deposit amount is 10 tk and maximum deposit amount is 10000 tk" });
+                    return res.status(208).json({ message: `Minimum deposit amount is ${minAmount} tk and maximum deposit amount is ${maxLimit} tk` });
                 }
             } else {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
