@@ -17,12 +17,13 @@ exports.handleSendMoney = async (req, res, next) => {
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
         const to_account_role = await Users.findOne({ where: { phone_number: to_account } });
         var p2pFee = 5;
+        var minAmount = 10;
 
         if (from_account_role.getDataValue('role') === "Customer" && to_account_role.getDataValue('role') === "Customer") {
             var currentBalance = await getBalance(from_account);
 
-            if (currentBalance > 0 && amount <= currentBalance) {
-                if (amount >= 10) {
+            if (currentBalance > 0 && amount + p2pFee <= currentBalance) {
+                if (amount >= minAmount) {
                     const debitTrnx = {
                         account: from_account,
                         from_account: from_account,
@@ -61,7 +62,7 @@ exports.handleSendMoney = async (req, res, next) => {
                         currentBalance: await getBalance(from_account)
                     });
                 } else {
-                    return res.status(208).json({ message: "Minimum amount is 10 tk" });
+                    return res.status(208).json({ message: `Minimum amount is ${minAmount} tk` });
                 }
             } else {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
@@ -70,10 +71,10 @@ exports.handleSendMoney = async (req, res, next) => {
             return res.status(208).json({ message: "From/To account should not be an agent account" });
         }
     } else {
-        if(!from_account_exists){
+        if (!from_account_exists) {
             return res.status(404).json({ message: "From Account does not exist" });
         }
-        else if(!to_account_exists){
+        else if (!to_account_exists) {
             return res.status(404).json({ message: "To Account does not exist" });
         }
     }
