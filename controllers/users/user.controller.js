@@ -194,7 +194,7 @@ exports.deleteUser = async (req, res) => {
         const user = await Users.findOne({ where: { id } });
 
         if (user) {
-            if (user.phone_number === "SYSTEM" || user.email == "salman@roadtocareer.net") {
+            if (user.phone_number === "SYSTEM" || user.email == "admin@roadtocareer.net") {
                 res.status(403).json({ message: "Cannot delete SYSTEM user or admin" });
             } else {
                 await Users.destroy({ where: { id } });
