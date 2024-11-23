@@ -6,8 +6,8 @@ const router = express.Router();
 
 router.get('/list', publicAuthenticateJWT, userController.listUsers);
 router.get('/search/id/:id', publicAuthenticateJWT, userController.searchUserById);
-router.get('/search/phonenumber/:phone_number', authenticateJWT, userController.searchUserByPhoneNumber);
-router.get('/search/email/:email', authenticateJWT, userController.searchUserByEmail);
+router.get('/search/phonenumber/:phone_number', publicAuthenticateJWT, userController.searchUserByPhoneNumber);
+router.post('/search/email', publicAuthenticateJWT, userController.searchUserByEmail);
 router.get('/search/:role', authenticateJWT, userController.searchUsersByRole);
 router.post('/create', authenticateJWT, userController.createUser);
 router.put('/update/:id', authenticateJWT, userController.updateUser);
