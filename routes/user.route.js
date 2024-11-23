@@ -15,5 +15,6 @@ router.patch('/update/:id', authenticateJWT, userController.partialUpdateUser);
 router.delete('/delete/:id', authenticateJWT, userController.deleteUser);
 router.post('/login', userController.validateLoginData, userController.loginUser);
 router.post('/upload/:id', userController.upload, userController.uploadPhoto);
+router.get('/uploads/:file', userController.retrieveImage);
 
 module.exports = router;

@@ -4,6 +4,9 @@ const { Transactions } = require('../../sequelizeModel/Transactions.js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
 
 
 // List all users with balance
@@ -297,6 +300,33 @@ exports.uploadPhoto = async (req, res) => {
         console.error("Error uploading photo:", err);
         res.status(500).json({ message: 'Error uploading photo', error: err.message });
     }
+};
+
+exports.retrieveImage = (req, res) => {
+    const { file } = req.params; // Extract the file name from the URL
+    const uploadsDir = path.join(__dirname, '../../uploads'); // Path to the uploads folder
+    const filePath = path.join(uploadsDir, file); // Construct the full file path
+    console.log(filePath);
+  
+    // Check if the file exists
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        console.error(`File not found: ${filePath}`);
+        return res.status(404).json({
+          error: 'File not found',
+        });
+      }
+  
+      // Send the file
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          console.error(`Error sending file: ${err.message}`);
+          return res.status(500).json({
+            error: 'Failed to send file',
+          });
+        }
+      });
+    });
 };
 
 // Validation function for user creation and updates
