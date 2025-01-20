@@ -12,11 +12,14 @@ exports.serverStatus = (req, res, next) => {
 // List all transactions
 exports.listTransactions = async (req, res, next) => {
     try {
-        const limit = req.query.limit ? parseInt(req.query.limit) : null;
+        // Parse limit and offset from request query. Provide default values if not specified.
+        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;  // Default limit is 10 if not provided
+        const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;  // Default offset is 0 if not provided
 
         const transactions = await Transactions.findAll({
-            limit,
-            order: [['createdAt', 'DESC']], // Replace 'createdAt' with the column you want to sort by
+            limit: limit,
+            offset: offset,
+            order: [['createdAt', 'DESC']],  // Replace 'createdAt' with the column you want to sort by
         });
 
         if (transactions.length > 0) {
@@ -26,13 +29,14 @@ exports.listTransactions = async (req, res, next) => {
                 transactions: transactions
             });
         } else {
-            res.status(404).json({ message: "Transactions not found" });
+            res.status(404).json({ message: "No transactions found" });
         }
     } catch (e) {
         console.log(e);
         res.status(500).json({ message: "Error fetching transactions" });
     }
 };
+
 
 
 // Search transactions by ID
