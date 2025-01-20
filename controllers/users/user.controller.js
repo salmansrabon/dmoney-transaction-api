@@ -12,12 +12,22 @@ const path = require('path');
 // List all users with balance
 exports.listUsers = async (req, res) => {
     try {
-        const limit = req.query.limit ? parseInt(req.query.limit) : null;
+        // Parse limit and offset from the request query. Set default values if not provided.
+        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;  // Default to 10 if limit is not specified
+        const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;  // Default to 0 if offset is not specified
 
-        const users = await Users.findAll({ limit });
+        const users = await Users.findAll({
+            limit: limit,
+            offset: offset
+        });
+
         const userList = await Promise.all(users.map(async (user) => {
-            const userBalance = await Transactions.findAll({ where: { account: user.phone_number } });
-            return { ...user.dataValues, balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0) };
+            // Assuming `Transactions` model has `credit` and `debit` fields
+            const userTransactions = await Transactions.findAll({
+                where: { account: user.phone_number }
+            });
+            const balance = userTransactions.reduce((acc, transaction) => acc + transaction.credit - transaction.debit, 0);
+            return { ...user.dataValues, balance: balance };
         }));
 
         res.status(200).json({ message: "User list", count: userList.length, users: userList });
@@ -26,6 +36,7 @@ exports.listUsers = async (req, res) => {
         res.status(500).json({ message: "Error listing users" });
     }
 };
+
 
 // Search user by ID
 exports.searchUserById = async (req, res) => {
