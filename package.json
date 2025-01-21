@@ -16,7 +16,7 @@
     "custom-env": "^2.0.1",
     "dateformat": "^4.5.1",
     "dotenv": "^16.0.3",
-    "express": "^4.17.2",
+    "express": "^4.21.2",
     "joi": "^17.7.0",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^8.5.1",
