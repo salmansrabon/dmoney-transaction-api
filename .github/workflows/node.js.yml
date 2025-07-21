@@ -42,7 +42,7 @@ jobs:
         }
 
 
-    - name: Filter and Send Only Error Logs to MCP Server
+    - name: 📤 Filter and Send Only Error Logs to MCP Server
       shell: powershell
       run: |
         $logLines = Get-Content "logs/test-output.log"
@@ -60,3 +60,4 @@ jobs:
         } else {
           Write-Host "ℹ️ No matching error logs found to send to MCP."
         }
+
