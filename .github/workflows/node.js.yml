@@ -42,10 +42,10 @@ jobs:
         }
 
 
-    - name: 📤 Filter and Send Only Error Logs to MCP Server
+    - name: Filter and Send Only Error Logs to MCP Server
       shell: powershell
       run: |
-        $logLines = Get-Content "logs/test-output.log"
+        $logLines = Get-Content "logs/runtime.log"
         $errorLogs = $logLines | Where-Object {
           ($_ -match '" (400|401|403|404|415|429)\b') -or ($_ -match '" 5\d{2}\b')
         }
@@ -56,8 +56,9 @@ jobs:
             -Method POST `
             -Body $joinedLogs `
             -ContentType "text/plain"
-          Write-Host "✅ Sent filtered error logs to MCP"
+          Write-Host "Sent filtered error logs to MCP"
         } else {
           Write-Host "No matching error logs found to send to MCP."
         }
+
 
