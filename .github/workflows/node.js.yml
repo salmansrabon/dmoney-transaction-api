@@ -58,6 +58,6 @@ jobs:
             -ContentType "text/plain"
           Write-Host "✅ Sent filtered error logs to MCP"
         } else {
-          Write-Host "ℹ️ No matching error logs found to send to MCP."
+          Write-Host "No matching error logs found to send to MCP."
         }
 
