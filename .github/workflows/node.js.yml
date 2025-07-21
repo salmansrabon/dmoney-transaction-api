@@ -42,7 +42,7 @@ jobs:
         }
 
 
-    - name: 📤 Filter and Send Only Error Logs to MCP Server
+    - name: Filter and Send Only Error Logs to MCP Server
       shell: powershell
       run: |
         $logPath = "logs/runtime.log"
@@ -58,12 +58,12 @@ jobs:
               -Method POST `
               -Body $joinedLogs `
               -ContentType "text/plain"
-            Write-Host "✅ Sent only error logs to MCP."
+            Write-Host "Sent only error logs to MCP."
           } else {
-            Write-Host "ℹ️ No matching error logs to send."
+            Write-Host "No matching error logs to send."
           }
         } else {
-          Write-Host "⚠️ Log file not found: $logPath"
+          Write-Host "Log file not found: $logPath"
         }
 
 
