@@ -33,8 +33,12 @@ jobs:
     - name:  Run Tests and Log Output
       shell: bash
       run: |
-        mkdir -p logs
-        npm test > logs/test-output.log 2>&1 || true
+        New-Item -ItemType Directory -Force -Path logs
+        try {
+          npm test *> logs/test-output.log
+        } catch {
+          Write-Output "Test run failed, continuing..."
+        }
 
     - name: Send Log to MCP Server
       run: |
