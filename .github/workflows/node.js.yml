@@ -36,7 +36,7 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path logs
         try {
-          npm test *> logs/test-output.log
+          npm test *> logs/runtime.log
         } catch {
           Write-Output "Test run failed, continuing..."
         }
