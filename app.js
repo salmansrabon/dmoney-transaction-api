@@ -3,13 +3,19 @@ const app = express();
 const morgan = require('morgan');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
+const fs = require('fs');
+
 const { swaggerUserDocument, swaggerTrnxDocument } = require('./swagger/swagger.js');
+const logStream = fs.createWriteStream('./logs/runtime.log', { flags: 'a' });
 
 // Middleware configurations
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 app.use(morgan('dev')); // Log HTTP requests
+// log all requests
+app.use(morgan('combined', { stream: logStream }));
+
 
 // Swagger setup
 app.use('/api-docs/user', swaggerUi.serveFiles(swaggerUserDocument), swaggerUi.setup(swaggerUserDocument));

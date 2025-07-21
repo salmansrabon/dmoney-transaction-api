@@ -42,11 +42,21 @@ jobs:
         }
 
 
-    - name: 📤 Send Log to MCP Server
+    - name: Filter and Send Only Error Logs to MCP Server
       shell: powershell
       run: |
-        $log = Get-Content -Raw -Path "logs/test-output.log"
-        Invoke-RestMethod -Uri "http://localhost:8000/logs/stream" `
-          -Method POST `
-          -Body $log `
-          -ContentType "text/plain"
+        $logLines = Get-Content "logs/test-output.log"
+        $errorLogs = $logLines | Where-Object {
+          ($_ -match '" (400|401|403|404|415|429)\b') -or ($_ -match '" 5\d{2}\b')
+        }
+
+        if ($errorLogs.Count -gt 0) {
+          $joinedLogs = $errorLogs -join "`n"
+          Invoke-RestMethod -Uri "http://localhost:8000/logs/stream" `
+            -Method POST `
+            -Body $joinedLogs `
+            -ContentType "text/plain"
+          Write-Host "✅ Sent filtered error logs to MCP"
+        } else {
+          Write-Host "ℹ️ No matching error logs found to send to MCP."
+        }
