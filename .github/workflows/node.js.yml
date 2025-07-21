@@ -42,8 +42,11 @@ jobs:
         }
 
 
-    - name: Send Log to MCP Server
+    - name: 📤 Send Log to MCP Server
+      shell: powershell
       run: |
-        curl -X POST http://localhost:8000/logs/stream \
-          -H "Content-Type: text/plain" \
-          --data-binary "@logs/test-output.log"
+        $log = Get-Content -Raw -Path "logs/test-output.log"
+        Invoke-RestMethod -Uri "http://localhost:8000/logs/stream" `
+          -Method POST `
+          -Body $log `
+          -ContentType "text/plain"
