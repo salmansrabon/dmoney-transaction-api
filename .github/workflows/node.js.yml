@@ -30,7 +30,8 @@ jobs:
     - name:  Build (if applicable)
       run: npm run build --if-present
 
-    - name: Run Tests and Log Output
+    - name:  Run Tests and Log Output
+      shell: bash
       run: |
         mkdir -p logs
         npm test > logs/test-output.log 2>&1 || true
