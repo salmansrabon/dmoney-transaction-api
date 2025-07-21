@@ -6,15 +6,28 @@ const swaggerUi = require('swagger-ui-express');
 const fs = require('fs');
 
 const { swaggerUserDocument, swaggerTrnxDocument } = require('./swagger/swagger.js');
-const logStream = fs.createWriteStream('./logs/runtime.log', { flags: 'a' });
+const errorLogStream = fs.createWriteStream('./logs/runtime.log', { flags: 'a' });
 
 // Middleware configurations
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 app.use(morgan('dev')); // Log HTTP requests
-// log all requests
-app.use(morgan('combined', { stream: logStream }));
+// Log ONLY 4xx and 5xx responses
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => {
+      // Extract status code from morgan's log line
+      const statusCodeMatch = message.match(/" (\d{3}) /);
+      if (statusCodeMatch) {
+        const statusCode = parseInt(statusCodeMatch[1]);
+        if ((statusCode >= 400 && statusCode < 600)) {
+          errorLogStream.write(message);
+        }
+      }
+    }
+  }
+}));
 
 
 // Swagger setup
