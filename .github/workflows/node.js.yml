@@ -31,7 +31,7 @@ jobs:
       run: npm run build --if-present
 
     - name: 🧪 Run Tests and Log Output
-      shell: pwsh  # 👈 this forces PowerShell on Windows
+      shell: powershell  # 👈 this forces PowerShell on Windows
       run: |
         New-Item -ItemType Directory -Force -Path logs
         try {
