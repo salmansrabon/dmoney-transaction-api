@@ -47,7 +47,7 @@ jobs:
       run: |
         $logLines = Get-Content "logs/runtime.log"
         $errorLogs = $logLines | Where-Object {
-          ($_ -match '\s(400|401|403|404|415|429|5\d{2})\s') 
+          ($_ -match '"\s\d{3}\s' -and ($_ -match '"\s(400|401|403|404|415|429|5\d{2})\s')) 
         }
 
         if ($errorLogs.Count -gt 0) {
