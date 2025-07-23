@@ -4,16 +4,15 @@ const morgan = require("morgan");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const fs = require("fs");
+const http = require("http");
 
-const {
-  swaggerUserDocument,
-  swaggerTrnxDocument,
-} = require("./swagger/swagger.js");
+const {swaggerUserDocument,swaggerTrnxDocument,} = require("./swagger/swagger.js");
+
+
 const errorLogStream = fs.createWriteStream("./logs/runtime.log", {
   flags: "a",
 });
 
-// ⛑️ Patch console.error to write to log (Sequelize errors, etc.)
 let lastConsoleError = ""; // Buffer to store latest error before request logs
 
 const originalConsoleError = console.error;
@@ -52,14 +51,37 @@ app.use((req, res, next) => {
     if (statusCode >= 400 && statusCode < 600) {
       const now = new Date().toISOString();
       const logLine = `${req.ip} - - [${now}] "${req.method} ${req.originalUrl} HTTP/${req.httpVersion}" ${statusCode}\n`;
-      errorLogStream.write(logLine);
-
       const stack = res.locals.errorDetails || lastConsoleError;
-      if (stack) {
-        errorLogStream.write(`Error Stack:\n${stack}\n`);
-      }
+      const fullLog = `${logLine}${stack ? `Error Stack:\n${stack}\n` : ""}`;
 
-      lastConsoleError = ""; // Clear buffer after use
+      // Write locally
+      /*errorLogStream.write(fullLog);
+      // Clear buffer
+      lastConsoleError = "";*/ 
+
+      //Send to MCP server
+      const postReq = http.request(
+        {
+          hostname: "localhost",
+          port: 8000,
+          path: "/logs/stream",
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+            "Content-Length": Buffer.byteLength(fullLog),
+          },
+        },
+        (res) => {
+          res.on("data", () => {});
+        }
+      );
+
+      postReq.on("error", (err) => {
+        console.warn("⚠️ Failed to send log to MCP:", err.message);
+      });
+
+      postReq.write(fullLog);
+      postReq.end();
     }
 
     return originalSend.apply(this, arguments);
