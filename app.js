@@ -8,7 +8,6 @@ const http = require("http");
 
 const {swaggerUserDocument,swaggerTrnxDocument,} = require("./swagger/swagger.js");
 
-
 const errorLogStream = fs.createWriteStream("./logs/runtime.log", {
   flags: "a",
 });
