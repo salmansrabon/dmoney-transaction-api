@@ -40,6 +40,20 @@ jobs:
         } catch {
           Write-Output "Test run failed, continuing..."
         }
+    
+    - name: 📡 Trigger MCP webhook (if build passes)
+      shell: powershell
+      run: |
+        $commitHash = git rev-parse HEAD
+        Write-Host "Triggering MCP Webhook for Commit: $commitHash"
+
+        $body = @{
+          commits = @(@{ id = "$commitHash" })
+        } | ConvertTo-Json -Depth 3
+
+        Invoke-RestMethod -Method Post -Uri "http://localhost:8000/webhook/github" `
+                          -ContentType "application/json" `
+                          -Body $body 
 
 
     # - name: Filter and Send Only Error Logs to MCP Server
