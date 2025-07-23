@@ -39,8 +39,8 @@ const userRoutes = require('./routes/user.route.js');
 const transactionRoutes = require('./routes/transaction.route.js');
 const defaultRoutes = require('./routes/default.route.js');
 
-app.use('/user', userRoutes);
-app.use('/transaction', transactionRoutes);
+app.use('/', userRoutes);
+app.use('/', transactionRoutes);
 app.use('/', defaultRoutes);
 
 // 404 error handling

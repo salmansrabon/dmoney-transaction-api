@@ -8,15 +8,15 @@ const paymentController = require('../controllers/transactions/payment.controlle
 
 const router = express.Router();
 
-router.get('/list', authenticateJWT, transactionDetailsController.listTransactions);
-router.get('/search/:trnxId', authenticateJWT, transactionDetailsController.searchTransactionById);
-router.get('/statement/:account', authenticateJWT, transactionDetailsController.getStatementByAccount);
-router.get('/limit/:account', authenticateJWT, transactionDetailsController.getTransactionLimitByAccount);
-router.get('/balance/:account', authenticateJWT, transactionDetailsController.getBalanceByAccount);
+router.get('/transaction/list', authenticateJWT, transactionDetailsController.listTransactions);
+router.get('/transaction/search/:trnxId', authenticateJWT, transactionDetailsController.searchTransactionById);
+router.get('/transaction/statement/:account', authenticateJWT, transactionDetailsController.getStatementByAccount);
+router.get('/transaction/limit/:account', authenticateJWT, transactionDetailsController.getTransactionLimitByAccount);
+router.get('/transaction/balance/:account', authenticateJWT, transactionDetailsController.getBalanceByAccount);
 
-router.post('/deposit', authenticateJWT, depositController.handleDeposit);
-router.post('/withdraw', authenticateJWT, withdrawController.handleWithdraw);
-router.post('/sendmoney', authenticateJWT, sendMoneyController.handleSendMoney);
-router.post('/payment', authenticateJWT, paymentController.handlePayment);
+router.post('/transaction/deposit', authenticateJWT, depositController.handleDeposit);
+router.post('/transaction/withdraw', authenticateJWT, withdrawController.handleWithdraw);
+router.post('/transaction/sendmoney', authenticateJWT, sendMoneyController.handleSendMoney);
+router.post('/transaction/payment', authenticateJWT, paymentController.handlePayment);
 
 module.exports = router;
