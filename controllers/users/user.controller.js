@@ -131,6 +131,7 @@ exports.createUser = async (req, res) => {
         // Validate the new user data
         const { error } = await exports.validateUser(newUser);
         if (error) {
+            console.error("Validation error:", error.details[0].message);
             return res.status(400).json({ message: error.details[0].message });
         }
 
@@ -140,6 +141,7 @@ exports.createUser = async (req, res) => {
 
     } catch (err) {
         console.error("Error creating user:", err);
+        console.error("Error details:", err.message);
         res.status(500).json({ message: "Error creating user", error: err.message });
     }
 };
