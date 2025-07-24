@@ -46,10 +46,11 @@ jobs:
           commitHash=$(git rev-parse HEAD)
           echo "Triggering MCP Webhook for Commit: $commitHash"
           
-          # Prepare JSON payload
-          payload=$(jq -n --arg id "$commitHash" '{"commits":[{"id":$id}]}')
-
+          # Inline JSON payload without jq
+          payload="{\"commits\":[{\"id\":\"${commitHash}\"}]}"
+          
           # Send webhook
           curl -X POST http://localhost:8000/webhook/github \
                -H "Content-Type: application/json" \
                -d "$payload"
+
