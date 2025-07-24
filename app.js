@@ -28,13 +28,13 @@ console.error = function (...args) {
   originalConsoleError.apply(console, args); // Still show in console
 };
 
-// 🌐 Middleware configurations
+//Middleware configurations
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 app.use(morgan("dev"));
 
-// 🔗 Capture 4xx/5xx request logs BEFORE response is sent
+//Capture 4xx/5xx request logs BEFORE response is sent
 app.use((req, res, next) => {
   const originalSend = res.send;
   const originalStatus = res.status;
@@ -89,7 +89,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🧾 Also pipe structured request logs via morgan (optional)
+//Also pipe structured request logs via morgan (optional)
 app.use(
   morgan("combined", {
     stream: {
@@ -108,7 +108,7 @@ app.use(
   })
 );
 
-// 🧭 Swagger
+//Swagger
 app.use(
   "/api-docs/user",
   swaggerUi.serveFiles(swaggerUserDocument),
@@ -120,7 +120,7 @@ app.use(
   swaggerUi.setup(swaggerTrnxDocument)
 );
 
-// 🚦 Routes
+//Routes
 const userRoutes = require("./routes/user.route.js");
 const transactionRoutes = require("./routes/transaction.route.js");
 const defaultRoutes = require("./routes/default.route.js");
@@ -129,14 +129,14 @@ app.use("/", userRoutes);
 app.use("/", transactionRoutes);
 app.use("/", defaultRoutes);
 
-// ❌ 404 Not Found
+//404 Not Found
 app.use((req, res, next) => {
   const err = new Error(`${req.method} ${req.url} Not Found`);
   err.status = 404;
   next(err);
 });
 
-// 🧯 Global Error Handler
+//Global Error Handler
 app.use((err, req, res, next) => {
   const errorDetails = err.stack || err.message || "Unknown Error";
   res.locals.errorDetails = errorDetails;
