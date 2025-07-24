@@ -42,15 +42,18 @@ jobs:
 
       - name: 📡 Trigger MCP webhook (if build passes)
         shell: bash
+        continue-on-error: false    # ← you can keep this false or true as you prefer
         run: |
+          set -e
           commitHash=$(git rev-parse HEAD)
           echo "Triggering MCP Webhook for Commit: $commitHash"
           
-          # Inline JSON payload without jq
+          # Inline JSON payload (no jq)
           payload="{\"commits\":[{\"id\":\"${commitHash}\"}]}"
           
           # Send webhook
-          curl -X POST http://localhost:8000/webhook/github \
-               -H "Content-Type: application/json" \
-               -d "$payload"
+          curl -v -X POST http://localhost:8000/webhook/github \
+                -H "Content-Type: application/json" \
+                -d "$payload"
+        
 
