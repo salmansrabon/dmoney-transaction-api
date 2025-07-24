@@ -1,4 +1,4 @@
-name: Node.js CI (Self-Hosted)
+name: Node.js CI (Self-Hosted Ubuntu)
 
 on:
   push:
@@ -8,52 +8,48 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    # Ensure this runner has both the 'self-hosted' and 'linux' labels
+    runs-on: [self-hosted, linux]
 
     strategy:
       matrix:
         node-version: [18.x]
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-    - name: Install Dependencies
-      run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-    - name:  Build (if applicable)
-      run: npm run build --if-present
+      - name: Build (if applicable)
+        run: npm run build --if-present
 
-    - name: 🧪 Run Tests and Log Output
-      shell: powershell
-      continue-on-error: true  # ✅ This prevents the workflow from failing
-      run: |
-        New-Item -ItemType Directory -Force -Path logs
-        try {
-          npm test *> logs/runtime.log
-        } catch {
-          Write-Output "Test run failed, continuing..."
-        }
-    
-    - name: 📡 Trigger MCP webhook (if build passes)
-      shell: powershell
-      run: |
-        $commitHash = git rev-parse HEAD
-        Write-Host "Triggering MCP Webhook for Commit: $commitHash"
+      - name: 🧪 Run Tests and Log Output
+        shell: bash
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          if ! npm test > logs/runtime.log 2>&1; then
+            echo "Test run failed, continuing..."
+          fi
 
-        $body = @{
-          commits = @(@{ id = "$commitHash" })
-        } | ConvertTo-Json -Depth 3
+      - name: 📡 Trigger MCP webhook (if build passes)
+        shell: bash
+        run: |
+          commitHash=$(git rev-parse HEAD)
+          echo "Triggering MCP Webhook for Commit: $commitHash"
+          
+          # Prepare JSON payload
+          payload=$(jq -n --arg id "$commitHash" '{"commits":[{"id":$id}]}')
 
-        Invoke-RestMethod -Method Post -Uri "http://localhost:8000/webhook/github" `
-                          -ContentType "application/json" `
-                          -Body $body 
-
-
-
+          # Send webhook
+          curl -X POST http://localhost:8000/webhook/github \
+               -H "Content-Type: application/json" \
+               -d "$payload"
