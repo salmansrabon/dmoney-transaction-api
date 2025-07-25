@@ -32,7 +32,7 @@ exports.listTransactions = async (req, res, next) => {
             res.status(404).json({ message: "No transactions found" });
         }
     } catch (e) {
-        console.log(e);
+        console.error(e);
         res.status(500).json({ message: "Error fetching transactions" });
     }
 };

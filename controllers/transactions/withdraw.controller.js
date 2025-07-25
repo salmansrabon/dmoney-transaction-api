@@ -13,7 +13,7 @@ exports.handleWithdraw = async (req, res, next) => {
 
     if (from_account_exists && to_account_exists) {
         if (from_account === to_account) {
-            return res.status(208).json({ message: "From account and to account cannot be the same" });
+            return res.status(400).json({ message: "From account and to account cannot be the same" });
         }
 
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
@@ -74,7 +74,8 @@ exports.handleWithdraw = async (req, res, next) => {
                         currentBalance: await getBalance(from_account),
                     });
                 } else {
-                    return res.status(208).json({ 
+                    console.error(req.body, `Minimum withdraw amount is ${minAmount} tk`);
+                    return res.status(400).json({ 
                         message: `Minimum withdraw amount is ${minAmount} tk` ,
                         currentBalance: await getBalance(from_account)
                     });
@@ -83,14 +84,16 @@ exports.handleWithdraw = async (req, res, next) => {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
             }
         } else {
-            return res.status(208).json({ message: "Customer cannot withdraw money from another customer" });
+            return res.status(400).json({ message: "Customer cannot withdraw money from another customer" });
         }
     } else {
         if(!from_account_exists){
-            return res.status(404).json({ message: "From Account does not exist" });
+            console.error(req.body, "From Account does not exist");
+            return res.status(400).json({ message: "From Account does not exist" });
         }
         else if(!to_account_exists){
-            return res.status(404).json({ message: "To Account does not exist" });
+            console.error(req.body, "To Account does not exist");
+            return res.status(400).json({ message: "To Account does not exist" });
         }
         
     }
