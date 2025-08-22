@@ -24,7 +24,7 @@ paths:
                     type: string
                     example: Server is up
 
-  /list:
+  /transaction/list:
     get:
       summary: Get list of all transactions
       security:
@@ -58,7 +58,7 @@ paths:
                     type: string
                     example: Transaction not found
 
-  /search/{trnxId}:
+  /transaction/search/{trnxId}:
     get:
       summary: Search transaction by transaction ID
       parameters:
@@ -99,7 +99,7 @@ paths:
                     type: string
                     example: Transaction not found
 
-  /statement/{account}:
+  /transaction/statement/{account}:
     get:
       summary: Get statement by account
       parameters:
@@ -140,7 +140,7 @@ paths:
                     type: string
                     example: User not found
 
-  /limit/{account}:
+  /transaction/limit/{account}:
     get:
       summary: Get user limit by account
       parameters:
@@ -177,7 +177,7 @@ paths:
                     type: string
                     example: User not found
 
-  /balance/{account}:
+  /transaction/balance/{account}:
     get:
       summary: Get user balance by account
       parameters:
@@ -213,7 +213,7 @@ paths:
                   message:
                     type: string
                     example: User not found
-  /deposit:
+  /transaction/deposit:
     post:
       summary: Deposit money to an account.
       description: Allows an authenticated user with the role of "Agent" to deposit money to another account with certain restrictions.
@@ -289,7 +289,7 @@ paths:
                     example: Account does not exist
       tags:
         - Transactions
-  /payment:
+  /transaction/payment:
     post:
       summary: Process a payment transaction.
       description: Allows an authenticated user (Customer or Agent) to make a payment to a Merchant account with payment fees and commission.
@@ -366,7 +366,7 @@ paths:
       tags:
         - Transactions
 
-  /sendmoney:
+  /transaction/sendmoney:
     post:
       summary: Send money between customer accounts.
       description: Allows an authenticated customer to send money to another customer account, with a P2P fee applied.
@@ -443,7 +443,7 @@ paths:
       tags:
         - Transactions  
 
-  /withdraw:
+  /transaction/withdraw:
     post:
       summary: Withdraw money from customer account via agent.
       description: Allows an authenticated customer to withdraw money through an agent account. Withdrawals incur a fee.
