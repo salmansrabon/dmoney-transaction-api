@@ -12,7 +12,8 @@ exports.handleSendMoney = async (req, res, next) => {
 
     if (from_account_exists && to_account_exists) {
         if (from_account === to_account) {
-            return res.status(208).json({ message: "From account and to account cannot be the same" });
+            console.error("From account and to account cannot be the same");
+            return res.status(400).json({ message: "From account and to account cannot be the same" });
         }
 
         const from_account_role = await Users.findOne({ where: { phone_number: from_account } });
@@ -63,7 +64,8 @@ exports.handleSendMoney = async (req, res, next) => {
                         currentBalance: await getBalance(from_account)
                     });
                 } else {
-                    return res.status(208).json({ message: `Minimum amount is ${minAmount} tk` });
+                    console.error(req.body, `Minimum amount is ${minAmount} tk`);
+                    return res.status(400).json({ message: `Minimum amount is ${minAmount} tk` });
                 }
             } else {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
@@ -73,9 +75,11 @@ exports.handleSendMoney = async (req, res, next) => {
         }
     } else {
         if (!from_account_exists) {
+            console.error(req.body, "From Account does not exist");
             return res.status(404).json({ message: "From Account does not exist" });
         }
         else if (!to_account_exists) {
+            console.error(req.body, "To Account does not exist");
             return res.status(404).json({ message: "To Account does not exist" });
         }
     }

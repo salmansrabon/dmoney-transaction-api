@@ -16,7 +16,7 @@ exports.handleDeposit = async (req, res, next) => {
 
     if (from_account_exists && to_account_exists) {
         if (from_account === to_account) {
-            return res.status(208).json({ message: "From account and to account cannot be the same" });
+            return res.status(400).json({ message: "From account and to account cannot be the same" });
         }
 
         const user_role = await Users.findOne({ where: { phone_number: from_account } });
@@ -73,18 +73,24 @@ exports.handleDeposit = async (req, res, next) => {
                         currentBalance: await getBalance(from_account)
                     });
                 } else {
-                    return res.status(208).json({ message: `Minimum deposit amount is ${minAmount} tk and maximum deposit amount is ${maxLimit} tk` });
+                    const errorResponse = { message: `Minimum deposit amount is ${minAmount} tk and maximum deposit amount is ${maxLimit} tk` };
+                    console.error("Invalid deposit amount - Request:", req.body, "Response:", errorResponse);
+                    return res.status(400).json({ message: `Minimum deposit amount is ${minAmount} tk and maximum deposit amount is ${maxLimit} tk` });
                 }
             } else {
+                console.log("Insufficient balance");
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
             }
         } else {
+            console.error("Only Agent can deposit money");
             return res.status(208).json({ message: "Only Agent can deposit money" });
         }
     } else {
         if (!from_account_exists) {
+            console.error("From Account does not exist");
             return res.status(404).json({ message: "From Account does not exist" });
         } else if (!to_account_exists) {
+            console.error("To Account does not exist");
             return res.status(404).json({ message: "To Account does not exist" });
         }
     }
