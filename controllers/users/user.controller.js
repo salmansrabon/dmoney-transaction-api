@@ -9,20 +9,36 @@ const path = require('path');
 
 
 
-// List all users with balance
+/**
+ * List all users with balance, paginated.
+ * Query params:
+ *   - page: page number (default 1)
+ *   - count: users per page (default 10)
+ * Response:
+ *   - message
+ *   - total: total number of users
+ *   - count: number of users in this page
+ *   - users: array of user objects with balance
+ */
 exports.listUsers = async (req, res) => {
     try {
-        // Parse limit and offset from the request query. Set default values if not provided.
-        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;  // Default to 10 if limit is not specified
-        const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;  // Default to 0 if offset is not specified
+        // Parse pagination parameters
+        const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+        const count = req.query.count ? parseInt(req.query.count, 10) : 10;
+        const limit = count > 0 ? count : 10;
+        const offset = page > 1 ? (page - 1) * limit : 0;
 
+        // Get total user count
+        const total = await Users.count();
+
+        // Get paginated users
         const users = await Users.findAll({
             limit: limit,
             offset: offset
         });
 
+        // Calculate balance for each user
         const userList = await Promise.all(users.map(async (user) => {
-            // Assuming `Transactions` model has `credit` and `debit` fields
             const userTransactions = await Transactions.findAll({
                 where: { account: user.phone_number }
             });
@@ -30,7 +46,12 @@ exports.listUsers = async (req, res) => {
             return { ...user.dataValues, balance: balance };
         }));
 
-        res.status(200).json({ message: "User list", count: userList.length, users: userList });
+        res.status(200).json({
+            message: "User list",
+            total: total,
+            count: userList.length,
+            users: userList
+        });
     } catch (error) {
         console.error("Error listing users:", error);
         res.status(500).json({ message: "Error listing users" });
@@ -355,4 +376,3 @@ exports.validateUser = async (user) => {
     });
     return schema.validate(user);
 };
-
