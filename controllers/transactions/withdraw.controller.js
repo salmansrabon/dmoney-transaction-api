@@ -38,7 +38,7 @@ exports.handleWithdraw = async (req, res, next) => {
         if (fromRole === "Customer" || fromRole === "Merchant") {
             // They can only withdraw from Agent
             if (toRole !== "Agent") {
-                return res.status(400).json({ message: "fromAc/toAc is invalid" });
+                return res.status(400).json({ message: "To Account is not agent account" });
             }
 
             var currentBalance = await getBalance(from_account);

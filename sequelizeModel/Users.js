@@ -36,7 +36,7 @@ const Users = sequelize.define('Users', {
 const predefinedUsers = [
     {
         name: "SYSTEM",
-        email: "system@roadtocareer.net",
+        email: "system@dmoney.com",
         password: "1234",
         phone_number: "SYSTEM",
         nid: "123456789",
@@ -45,7 +45,7 @@ const predefinedUsers = [
     },
     {
         name: "Admin",
-        email: "admin@roadtocareer.net",
+        email: "admin@dmoney.com",
         password: "1234",
         phone_number: "01686606909",
         nid: "123456789",
@@ -54,7 +54,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Agent",
-        email: "agent@roadtocareer.net",
+        email: "agent@dmoney.com",
         password: "1234",
         phone_number: "01686606901",
         nid: "123456789",
@@ -62,8 +62,17 @@ const predefinedUsers = [
         photo: null
     },
     {
+        name: "SYSTEM",
+        email: "system@dmoney.com",
+        password: "1234",
+        phone_number: "SYSTEM",
+        nid: "123456789",
+        role: "Agent",
+        photo: null
+    },
+    {
         name: "Test Customer 1",
-        email: "customer1@roadtocareer.net",
+        email: "customer1@dmoney.com",
         password: "1234",
         phone_number: "01686606902",
         nid: "123456789",
@@ -72,7 +81,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Customer 2",
-        email: "customer2@roadtocareer.net",
+        email: "customer2@dmoney.com",
         password: "1234",
         phone_number: "01686606903",
         nid: "123456789",
@@ -81,7 +90,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Merchant",
-        email: "merchant@roadtocareer.net",
+        email: "merchant@dmoney.com",
         password: "1234",
         phone_number: "01686606905",
         nid: "123456789",
