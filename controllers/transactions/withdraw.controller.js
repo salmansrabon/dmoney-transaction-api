@@ -31,7 +31,16 @@ exports.handleWithdraw = async (req, res, next) => {
             withdrawFee = feeRate * amount;
         }
 
-        if (from_account_role.getDataValue('role') === "Customer" && to_account_role.getDataValue('role') === "Agent") {
+        const fromRole = from_account_role.getDataValue('role');
+        const toRole = to_account_role.getDataValue('role');
+
+        // Check if from_account is Customer or Merchant
+        if (fromRole === "Customer" || fromRole === "Merchant") {
+            // They can only withdraw from Agent
+            if (toRole !== "Agent") {
+                return res.status(400).json({ message: "fromAc/toAc is invalid" });
+            }
+
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && amount + withdrawFee <= currentBalance) {
@@ -84,7 +93,7 @@ exports.handleWithdraw = async (req, res, next) => {
                 return res.status(208).json({ message: "Insufficient balance", currentBalance: await getBalance(from_account) });
             }
         } else {
-            return res.status(400).json({ message: "Customer cannot withdraw money from another customer" });
+            return res.status(400).json({ message: "fromAc/toAc is invalid" });
         }
     } else {
         if(!from_account_exists){
