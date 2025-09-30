@@ -94,8 +94,7 @@ exports.searchUserByPhoneNumber = async (req, res) => {
 // Search user by email
 exports.searchUserByEmail = async (req, res) => {
     try {
-        const { email } = req.body;
-        const user = await Users.findOne({ where: { email } });
+        const user = await Users.findOne({ where: { email: req.params.email } });
         if (user) {
             const userBalance = await Transactions.findAll({ where: { account: user.phone_number } });
             res.status(200).json({ message: "User found", user: { ...user.dataValues, balance: userBalance.reduce((acc, cur) => acc + cur.credit - cur.debit, 0) } });
