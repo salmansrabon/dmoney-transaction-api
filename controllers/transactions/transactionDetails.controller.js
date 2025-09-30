@@ -12,25 +12,28 @@ exports.serverStatus = (req, res, next) => {
 // List all transactions
 exports.listTransactions = async (req, res, next) => {
     try {
-        // Parse limit and offset from request query. Provide default values if not specified.
-        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;  // Default limit is 10 if not provided
-        const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;  // Default offset is 0 if not provided
+        // Parse pagination parameters
+        const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+        const count = req.query.count ? parseInt(req.query.count, 10) : 10;
+        const limit = count > 0 ? count : 10;
+        const offset = page > 1 ? (page - 1) * limit : 0;
 
+        // Get total transaction count
+        const total = await Transactions.count();
+
+        // Get paginated transactions
         const transactions = await Transactions.findAll({
             limit: limit,
             offset: offset,
-            order: [['createdAt', 'DESC']],  // Replace 'createdAt' with the column you want to sort by
+            order: [['createdAt', 'DESC']]
         });
 
-        if (transactions.length > 0) {
-            res.status(200).json({
-                message: "Transaction list",
-                count: transactions.length,
-                transactions: transactions
-            });
-        } else {
-            res.status(404).json({ message: "No transactions found" });
-        }
+        res.status(200).json({
+            message: "Transaction list",
+            total: total,
+            count: transactions.length,
+            transactions: transactions
+        });
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: "Error fetching transactions" });
@@ -63,9 +66,26 @@ exports.getStatementByAccount = async (req, res, next) => {
     try {
         const user = await Users.findOne({ where: { phone_number: req.params.account } });
         if (user) {
-            const transactions = await Transactions.findAll({ where: { account: req.params.account } });
+            // Parse pagination parameters
+            const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+            const count = req.query.count ? parseInt(req.query.count, 10) : 10;
+            const limit = count > 0 ? count : 10;
+            const offset = page > 1 ? (page - 1) * limit : 0;
+
+            // Get total transaction count for this account
+            const total = await Transactions.count({ where: { account: req.params.account } });
+
+            // Get paginated transactions
+            const transactions = await Transactions.findAll({
+                where: { account: req.params.account },
+                limit: limit,
+                offset: offset,
+                order: [['createdAt', 'DESC']]
+            });
+
             res.status(200).json({
                 message: "Transaction list",
+                total: total,
                 count: transactions.length,
                 transactions: transactions
             });
