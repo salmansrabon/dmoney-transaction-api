@@ -14,6 +14,7 @@ const path = require('path');
  * Query params:
  *   - page: page number (default 1)
  *   - count: users per page (default 10)
+ *   - order: sort order by id (asc/desc, default asc)
  * Response:
  *   - message
  *   - total: total number of users
@@ -27,14 +28,18 @@ exports.listUsers = async (req, res) => {
         const count = req.query.count ? parseInt(req.query.count, 10) : 10;
         const limit = count > 0 ? count : 10;
         const offset = page > 1 ? (page - 1) * limit : 0;
+        
+        // Parse order parameter
+        const order = req.query.order && req.query.order.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
 
         // Get total user count
         const total = await Users.count();
 
-        // Get paginated users
+        // Get paginated users with ordering
         const users = await Users.findAll({
             limit: limit,
-            offset: offset
+            offset: offset,
+            order: [['id', order]]
         });
 
         // Calculate balance for each user
