@@ -248,9 +248,17 @@ exports.deleteUser = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
     try {
-        const { email, password } = req.validatedData;
+        const { identifier, password } = req.validatedData;
 
-        const user = await Users.findOne({ where: { email } });
+        // Try to find user by email or phone_number
+        const user = await Users.findOne({
+            where: {
+                [require('sequelize').Op.or]: [
+                    { email: identifier },
+                    { phone_number: identifier }
+                ]
+            }
+        });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -261,7 +269,7 @@ exports.loginUser = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { identifier: email, role: user.role },
+            { identifier: identifier, role: user.role },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: process.env.expires_in }
         );
@@ -279,13 +287,16 @@ exports.loginUser = async (req, res) => {
 };
 
 exports.validateLoginData = (req, res, next) => {
-    const { email, password } = req.body;
+    const { email, phone_number, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ message: "Please check the request body and try again" });
+    // Accept either email or phone_number along with password
+    if ((!email && !phone_number) || !password) {
+        return res.status(400).json({ message: "Please provide either email or phone_number along with password" });
     }
 
-    req.validatedData = { email, password };
+    // Use whichever identifier was provided
+    const identifier = email || phone_number;
+    req.validatedData = { identifier, password };
     next();
 };
 
