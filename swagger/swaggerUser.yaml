@@ -214,8 +214,10 @@ paths:
           description: User role
           schema:
             type: string
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: List of users with the specified role
@@ -318,9 +320,10 @@ paths:
 
   /user/update/{id}:
     put:
-      summary: Update user by ID
+      summary: Update user by ID (Full update)
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       parameters:
         - name: id
           in: path
@@ -328,6 +331,7 @@ paths:
           description: User ID
           schema:
             type: integer
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       requestBody:
         required: true
         content:
@@ -401,13 +405,12 @@ paths:
                   message:
                     type: string
 
-
-
-  /user/delete/{id}:
-    delete:
-      summary: Delete user by ID
+    patch:
+      summary: Partially update user by ID
+      description: Update specific fields of a user without requiring all fields
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       parameters:
         - name: id
           in: path
@@ -415,6 +418,96 @@ paths:
           description: User ID
           schema:
             type: integer
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                phone_number:
+                  type: string
+                nid:
+                  type: string
+                role:
+                  type: string
+      responses:
+        '200':
+          description: User partially updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User updated
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone_number:
+                        type: string
+                      nid:
+                        type: string
+                      role:
+                        type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '403':
+          description: Only admin can update users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+
+
+  /user/delete/{id}:
+    delete:
+      summary: Delete user by ID
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       responses:
         '200':
           description: User deleted successfully
@@ -575,6 +668,36 @@ paths:
                   message:
                     type: string
 
+  /user/uploads/{file}:
+    get:
+      summary: Retrieve uploaded user photo
+      description: Get the uploaded image file for a user
+      parameters:
+        - name: file
+          in: path
+          required: true
+          description: Filename of the uploaded image
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image file retrieved successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Image file not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Image not found
+
 components:
   securitySchemes:
     JWTAuth:
@@ -594,5 +717,4 @@ components:
       description: Custom header required for API authentication
       required: true
       schema:
-        type: string    
-
+        type: string

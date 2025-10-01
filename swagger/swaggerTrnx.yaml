@@ -27,8 +27,11 @@ paths:
   /transaction/list:
     get:
       summary: Get list of all transactions
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: Transaction list with count
@@ -68,8 +71,10 @@ paths:
           schema:
             type: string
           description: The transaction ID to search for
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: Transaction list with count
@@ -109,8 +114,10 @@ paths:
           schema:
             type: string
           description: The account to get the statement for
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: Transaction list with count
@@ -150,8 +157,10 @@ paths:
           schema:
             type: string
           description: The account to get the user limit for
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: User limit information
@@ -187,8 +196,10 @@ paths:
           schema:
             type: string
           description: The account to get the user balance for
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
+        - XAuthSecretKey: []
       responses:
         '200':
           description: User balance information
@@ -218,8 +229,11 @@ paths:
       summary: Deposit money to an account.
       description: Allows an authenticated user with the role of "Agent" to deposit money to another account with certain restrictions.
       operationId: deposit
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+        - XAuthSecretKey: []
       requestBody:
         description: Data for depositing money to an account.
         required: true
@@ -294,8 +308,11 @@ paths:
       summary: Process a payment transaction.
       description: Allows an authenticated user (Customer or Agent) to make a payment to a Merchant account with payment fees and commission.
       operationId: payment
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+        - XAuthSecretKey: []
       requestBody:
         description: Payment transaction details.
         required: true
@@ -371,8 +388,11 @@ paths:
       summary: Send money between customer accounts.
       description: Allows an authenticated customer to send money to another customer account, with a P2P fee applied.
       operationId: sendMoney
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+        - XAuthSecretKey: []
       requestBody:
         description: Send money transaction details.
         required: true
@@ -448,8 +468,11 @@ paths:
       summary: Withdraw money from customer account via agent.
       description: Allows an authenticated customer to withdraw money through an agent account. Withdrawals incur a fee.
       operationId: withdrawMoney
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+        - XAuthSecretKey: []
       requestBody:
         description: Withdraw money transaction details.
         required: true
@@ -525,3 +548,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    
+    XAuthSecretKey:
+      type: apiKey
+      in: header
+      name: X-AUTH-SECRET-KEY
+
+  parameters:
+    XAuthSecretKeyParam:
+      name: X-AUTH-SECRET-KEY
+      in: header
+      description: Partner key required for transaction API authentication
+      required: true
+      schema:
+        type: string
