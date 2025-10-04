@@ -115,53 +115,35 @@ exports.searchUserByEmail = async (req, res) => {
 
 // Search users by role
 // Optimized: Search users by role with aggregated balances
+// Optimized: Search users by role (no balance calculation)
 exports.searchUsersByRole = async (req, res) => {
   try {
-    const role = req.params.role;
+    const { role } = req.params;
+    const { page = 1, limit = 50 } = req.query;
 
-    // Fetch users by role (limit for large data)
-    const users = await Users.findAll({
+    const offset = (page - 1) * limit;
+
+    // Fetch users by role, paginated
+    const { count, rows: users } = await Users.findAndCountAll({
       where: { role },
+      limit: Number(limit),
+      offset,
+      order: [['id', 'DESC']],
       attributes: ['id', 'name', 'email', 'phone_number', 'nid', 'role', 'createdAt'],
-      raw: true,
     });
 
-    if (!users.length) {
-      return res.status(200).json({ count: 0, users: [] });
-    }
-
-    // Extract all phone numbers
-    const phoneNumbers = users.map(u => u.phone_number);
-
-    // Fetch aggregated balance in ONE query
-    const transactions = await Transactions.findAll({
-      attributes: [
-        'account',
-        [sequelize.fn('SUM', sequelize.literal('credit - debit')), 'balance']
-      ],
-      where: { account: phoneNumbers },
-      group: ['account'],
-      raw: true
+    res.status(200).json({
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: Number(page),
+      users,
     });
-
-    // Create a balance map
-    const balanceMap = {};
-    transactions.forEach(tx => {
-      balanceMap[tx.account] = Number(tx.balance) || 0;
-    });
-
-    // Merge balance with user data
-    const userList = users.map(u => ({
-      ...u,
-      balance: balanceMap[u.phone_number] || 0
-    }));
-
-    res.status(200).json({ count: userList.length, users: userList });
   } catch (error) {
-    console.error("Error searching users by role:", error);
-    res.status(500).json({ message: "Error searching users" });
+    console.error('Error searching users by role:', error);
+    res.status(500).json({ message: 'Error searching users' });
   }
 };
+
 
 
 // Create a new user
