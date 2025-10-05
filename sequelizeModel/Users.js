@@ -31,6 +31,12 @@ const Users = sequelize.define('Users', {
         type: DataTypes.STRING,
         allowNull: true
     }
+}, {
+    indexes: [
+        {
+            fields: ['role']
+        }
+    ]
 });
 
 const predefinedUsers = [
