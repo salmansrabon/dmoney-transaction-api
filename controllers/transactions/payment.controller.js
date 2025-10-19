@@ -2,6 +2,7 @@ const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
 const jsonConfig=require('./config.json');
+const utilities = require('./utilities.json');
 
 exports.handlePayment = async (req, res, next) => {
     const { from_account, to_account, amount, discount_code, discount_amount } = req.body;
@@ -25,9 +26,15 @@ exports.handlePayment = async (req, res, next) => {
         var paymentFee = feeRate * amount;
         var commission = commissionRate * amount;
 
-        // Apply minimum payment fee
-        if (paymentFee <= 5) {
-            paymentFee = 5;
+        // If the recipient is a utility merchant (listed in utilities.json) then waive the service fee
+        const isUtilityMerchant = Object.values(utilities).includes(to_account);
+        if (isUtilityMerchant) {
+            paymentFee = 0;
+        } else {
+            // Apply minimum payment fee for non-utility merchants
+            if (paymentFee <= 5) {
+                paymentFee = 5;
+            }
         }
 
         // Apply discount if provided
@@ -75,7 +82,10 @@ exports.handlePayment = async (req, res, next) => {
                     };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
-                    await Transactions.create(creditTrnxToSystem);
+                    // Only create the system fee transaction if there is a payment fee
+                    if (paymentFee > 0) {
+                        await Transactions.create(creditTrnxToSystem);
+                    }
 
                     // Build the response object conditionally
                     let response = {
