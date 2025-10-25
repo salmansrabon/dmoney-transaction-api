@@ -4,3 +4,5 @@ node_modules
 test.js
 uploads
 logs
+Reports
+package-lock.json
