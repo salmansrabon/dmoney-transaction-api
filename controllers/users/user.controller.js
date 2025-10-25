@@ -8,20 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const { sequelize } = require('../../sequelizeModel/db.js');
 
-
-
-/**
- * List all users with balance, paginated.
- * Query params:
- *   - page: page number (default 1)
- *   - count: users per page (default 10)
- *   - order: sort order by id (asc/desc, default asc)
- * Response:
- *   - message
- *   - total: total number of users
- *   - count: number of users in this page
- *   - users: array of user objects with balance
- */
 exports.listUsers = async (req, res) => {
     try {
         // Parse pagination parameters
