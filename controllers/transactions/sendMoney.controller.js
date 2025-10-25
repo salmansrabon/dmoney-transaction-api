@@ -3,6 +3,7 @@ const { Users } = require('../../sequelizeModel/Users');
 const { getBalance } = require('../../services/getBalance');
 const jsonConfig=require('./config.json');
 
+//handle send money
 exports.handleSendMoney = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
     var trnxId = "TXN" + Math.floor(Math.random() * 1000000);
