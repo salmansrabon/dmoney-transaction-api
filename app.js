@@ -6,7 +6,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const {swaggerUserDocument,swaggerTrnxDocument,} = require("./swagger/swagger.js");
 
-// -- Middleware Config --
+// Middleware Config
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors({ origin: "*" }));
