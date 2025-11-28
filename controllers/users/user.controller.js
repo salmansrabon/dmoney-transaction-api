@@ -187,6 +187,14 @@ exports.updateUser = async (req, res) => {
         const user = await Users.findOne({ where: { id } });
 
         if (user) {
+            // Check if user is protected (system users)
+            if (user.phone_number === "SYSTEM" || 
+                user.email === "admin@roadtocareer.net" || 
+                user.email === "admin@dmoney.com" || 
+                user.email === "system@dmoney.com") {
+                return res.status(403).json({ message: "Cannot update protected system user" });
+            }
+
             const updatedUser = { ...req.body };
 
             const { error } = await exports.validateUser(updatedUser);
@@ -217,6 +225,14 @@ exports.partialUpdateUser = async (req, res) => {
         const user = await Users.findOne({ where: { id } });
 
         if (user) {
+            // Check if user is protected (system users)
+            if (user.phone_number === "SYSTEM" || 
+                user.email === "admin@roadtocareer.net" || 
+                user.email === "admin@dmoney.com" || 
+                user.email === "system@dmoney.com") {
+                return res.status(403).json({ message: "Cannot update protected system user" });
+            }
+
             const updatedUser = { ...req.body };
             await Users.update(updatedUser, { where: { id } });
             res.status(200).json({ message: "User updated successfully", user: updatedUser });
@@ -241,8 +257,12 @@ exports.deleteUser = async (req, res) => {
         const user = await Users.findOne({ where: { id } });
 
         if (user) {
-            if (user.phone_number === "SYSTEM" || user.email == "admin@roadtocareer.net") {
-                res.status(403).json({ message: "Cannot delete SYSTEM user or admin" });
+            // Check if user is protected (system users)
+            if (user.phone_number === "SYSTEM" || 
+                user.email === "admin@roadtocareer.net" || 
+                user.email === "admin@dmoney.com" || 
+                user.email === "system@dmoney.com") {
+                return res.status(403).json({ message: "Cannot delete protected system user" });
             } else {
                 await Users.destroy({ where: { id } });
                 res.status(200).json({ message: "User deleted successfully" });
