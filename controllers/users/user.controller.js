@@ -192,7 +192,7 @@ exports.updateUser = async (req, res) => {
                 user.email === "admin@roadtocareer.net" || 
                 user.email === "admin@dmoney.com" || 
                 user.email === "system@dmoney.com") {
-                return res.status(403).json({ message: "Cannot update protected system user" });
+                return res.status(403).json({ message: "Stupid! Do not try to update this!" });
             }
 
             const updatedUser = { ...req.body };
@@ -230,7 +230,7 @@ exports.partialUpdateUser = async (req, res) => {
                 user.email === "admin@roadtocareer.net" || 
                 user.email === "admin@dmoney.com" || 
                 user.email === "system@dmoney.com") {
-                return res.status(403).json({ message: "Cannot update protected system user" });
+                return res.status(403).json({ message: "Stupid! Do not try to update this!" });
             }
 
             const updatedUser = { ...req.body };
@@ -262,7 +262,7 @@ exports.deleteUser = async (req, res) => {
                 user.email === "admin@roadtocareer.net" || 
                 user.email === "admin@dmoney.com" || 
                 user.email === "system@dmoney.com") {
-                return res.status(403).json({ message: "Cannot delete protected system user" });
+                return res.status(403).json({ message: "Stupid! Do not try to delete this!" });
             } else {
                 await Users.destroy({ where: { id } });
                 res.status(200).json({ message: "User deleted successfully" });
