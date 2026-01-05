@@ -2,7 +2,7 @@
   "name": "nodejs-trnx-api-demo",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "PORT=3005 server.js",
   "scripts": {
     "dev": "npx nodemon server.js",
     "start": "node server.js",
