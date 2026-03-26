@@ -31,6 +31,12 @@ const Transactions = sequelize.define('Transactions', {
     credit: {
         type: DataTypes.DOUBLE,
         allowNull: false
+    },
+    transaction_type: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        defaultValue: null,
+        comment: 'Type of transaction: SendMoney | Payment | Withdraw | Deposit | StripeCashIn | AdminDeposit'
     }
 });
 

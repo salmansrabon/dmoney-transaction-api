@@ -2,6 +2,7 @@ const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { Commission } = require('../../sequelizeModel/Commission');
 const { getBalance } = require('../../services/getBalance');
+const { checkCustomerLimits } = require('../../services/limitChecker');
 
 exports.handlePayment = async (req, res, next) => {
     const { from_account, to_account, amount, discount_code, discount_amount } = req.body;
@@ -48,36 +49,51 @@ exports.handlePayment = async (req, res, next) => {
         var commission = commissionRate * finalAmount;
 
         if ((fromRole === "Customer" || fromRole === "Agent") && toRole === "Merchant") {
+
+            // ── Daily / Monthly limit check (Customers only) ──────────────────
+            if (fromRole === "Customer") {
+                const limitCheck = await checkCustomerLimits(from_account, finalAmount);
+                if (!limitCheck.allowed) {
+                    return res.status(400).json({
+                        message: limitCheck.message,
+                        details: limitCheck.details
+                    });
+                }
+            }
+
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && finalAmount + paymentFee <= currentBalance) {
                 if (finalAmount >= minAmount) {
                     const debitTrnx = {
-                        account:      from_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Payment",
-                        trnxId:       trnxId,
-                        debit:        finalAmount + paymentFee,
-                        credit:       0
+                        account:          from_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Payment",
+                        trnxId:           trnxId,
+                        debit:            finalAmount + paymentFee,
+                        credit:           0,
+                        transaction_type: 'Payment'
                     };
                     const creditTrnx = {
-                        account:      to_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Payment",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       finalAmount + commission
+                        account:          to_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Payment",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           finalAmount + commission,
+                        transaction_type: 'Payment'
                     };
                     const creditTrnxToSystem = {
-                        account:      "SYSTEM",
-                        from_account: from_account,
-                        to_account:   "SYSTEM",
-                        description:  "Payment Service Charge",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       paymentFee
+                        account:          "SYSTEM",
+                        from_account:     from_account,
+                        to_account:       "SYSTEM",
+                        description:      "Payment Service Charge",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           paymentFee,
+                        transaction_type: 'Payment'
                     };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);

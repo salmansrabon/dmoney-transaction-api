@@ -2,6 +2,7 @@ const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { Commission } = require('../../sequelizeModel/Commission');
 const { getBalance } = require('../../services/getBalance');
+const { checkCustomerLimits } = require('../../services/limitChecker');
 
 exports.handleWithdraw = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
@@ -41,36 +42,50 @@ exports.handleWithdraw = async (req, res, next) => {
                 return res.status(400).json({ message: "To Account is not agent account" });
             }
 
+            // ── Daily / Monthly limit check (Customers only) ──────────────────
+            if (fromRole === "Customer") {
+                const limitCheck = await checkCustomerLimits(from_account, amount);
+                if (!limitCheck.allowed) {
+                    return res.status(400).json({
+                        message: limitCheck.message,
+                        details: limitCheck.details
+                    });
+                }
+            }
+
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && amount + withdrawFee <= currentBalance) {
                 if (amount >= minAmount) {
                     const debitTrnx = {
-                        account:      from_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Withdraw",
-                        trnxId:       trnxId,
-                        debit:        amount + withdrawFee,
-                        credit:       0
+                        account:          from_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Withdraw",
+                        trnxId:           trnxId,
+                        debit:            amount + withdrawFee,
+                        credit:           0,
+                        transaction_type: 'Withdraw'
                     };
                     const creditTrnx = {
-                        account:      to_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Withdraw",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       amount + commission
+                        account:          to_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Withdraw",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           amount + commission,
+                        transaction_type: 'Withdraw'
                     };
                     const creditTrnxToSystem = {
-                        account:      "SYSTEM",
-                        from_account: from_account,
-                        to_account:   "SYSTEM",
-                        description:  "Withdraw Service Charge",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       withdrawFee
+                        account:          "SYSTEM",
+                        from_account:     from_account,
+                        to_account:       "SYSTEM",
+                        description:      "Withdraw Service Charge",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           withdrawFee,
+                        transaction_type: 'Withdraw'
                     };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);

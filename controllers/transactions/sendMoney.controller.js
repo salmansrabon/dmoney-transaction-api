@@ -2,6 +2,7 @@ const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { Commission } = require('../../sequelizeModel/Commission');
 const { getBalance } = require('../../services/getBalance');
+const { checkCustomerLimits } = require('../../services/limitChecker');
 
 exports.handleSendMoney = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
@@ -33,36 +34,49 @@ exports.handleSendMoney = async (req, res, next) => {
         const toRole   = to_account_exists.getDataValue('role');
 
         if (fromRole === "Customer" && toRole === "Customer") {
+
+            // ── Daily / Monthly limit check ──────────────────────────────────
+            const limitCheck = await checkCustomerLimits(from_account, amount);
+            if (!limitCheck.allowed) {
+                return res.status(400).json({
+                    message: limitCheck.message,
+                    details: limitCheck.details
+                });
+            }
+
             var currentBalance = await getBalance(from_account);
 
             if (currentBalance > 0 && amount + p2pFee <= currentBalance) {
                 if (amount >= minAmount) {
                     const debitTrnx = {
-                        account:      from_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Send Money",
-                        trnxId:       trnxId,
-                        debit:        amount + p2pFee,
-                        credit:       0
+                        account:          from_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Send Money",
+                        trnxId:           trnxId,
+                        debit:            amount + p2pFee,
+                        credit:           0,
+                        transaction_type: 'SendMoney'
                     };
                     const creditTrnx = {
-                        account:      to_account,
-                        from_account: from_account,
-                        to_account:   to_account,
-                        description:  "Send Money",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       amount
+                        account:          to_account,
+                        from_account:     from_account,
+                        to_account:       to_account,
+                        description:      "Send Money",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           amount,
+                        transaction_type: 'SendMoney'
                     };
                     const creditTrnxToSystem = {
-                        account:      "SYSTEM",
-                        from_account: from_account,
-                        to_account:   "SYSTEM",
-                        description:  "Sendmoney Service Charge",
-                        trnxId:       trnxId,
-                        debit:        0,
-                        credit:       p2pFee
+                        account:          "SYSTEM",
+                        from_account:     from_account,
+                        to_account:       "SYSTEM",
+                        description:      "Sendmoney Service Charge",
+                        trnxId:           trnxId,
+                        debit:            0,
+                        credit:           p2pFee,
+                        transaction_type: 'SendMoney'
                     };
                     await Transactions.create(debitTrnx);
                     await Transactions.create(creditTrnx);
