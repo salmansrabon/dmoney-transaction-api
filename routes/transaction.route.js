@@ -6,6 +6,7 @@ const transactionDetailsController = require('../controllers/transactions/transa
 const sendMoneyController = require('../controllers/transactions/sendMoney.controller.js');
 const paymentController = require('../controllers/transactions/payment.controller.js');
 const adminDepositController = require('../controllers/transactions/adminDeposit.controller.js');
+const stripeCashInController = require('../controllers/transactions/stripeCashIn.controller.js');
 
 const router = express.Router();
 
@@ -19,6 +20,8 @@ router.post('/transaction/deposit', authenticateJWT, depositController.handleDep
 router.post('/transaction/withdraw', authenticateJWT, withdrawController.handleWithdraw);
 router.post('/transaction/sendmoney', authenticateJWT, sendMoneyController.handleSendMoney);
 router.post('/transaction/payment', authenticateJWT, paymentController.handlePayment);
-router.post('/transaction/adminDeposit', authenticateJWT, adminDepositController.handleAdminDeposit);
+router.post('/transaction/adminDeposit',          authenticateJWT, adminDepositController.handleAdminDeposit);
+router.post('/transaction/stripe/create-intent',  authenticateJWT, stripeCashInController.createPaymentIntent);
+router.post('/transaction/stripe/confirm',        authenticateJWT, stripeCashInController.confirmCashIn);
 
 module.exports = router;
