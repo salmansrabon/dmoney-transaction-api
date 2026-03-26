@@ -179,36 +179,45 @@ exports.createUser = async (req, res) => {
 
 // Update an existing user
 exports.updateUser = async (req, res) => {
-    if (req.user.role.toLowerCase() !== 'admin') {
-        return res.status(403).json({ message: 'Only admin can update users' });
-    }
-
     try {
         const { id } = req.params;
         const user = await Users.findOne({ where: { id } });
 
-        if (user) {
-            // Check if user is protected (system users)
-            if (user.phone_number === "SYSTEM" || 
-                user.email === "admin@roadtocareer.net" || 
-                user.email === "admin@dmoney.com" || 
-                user.email === "system@dmoney.com") {
-                return res.status(403).json({ message: "Stupid! Do not try to update this!" });
-            }
-
-            const updatedUser = { ...req.body };
-
-            const { error } = await exports.validateUser(updatedUser);
-            if (error) {
-                return res.status(400).json({ message: error.details[0].message });
-            }
-
-            await Users.update(updatedUser, { where: { id } });
-            res.status(200).json({ message: "User updated", user: updatedUser });
-
-        } else {
-            res.status(404).json({ message: "User not found" });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
+
+        const isAdmin = req.user.role.toLowerCase() === 'admin';
+        const isSelf  = user.email === req.user.identifier || user.phone_number === req.user.identifier;
+
+        if (!isAdmin && !isSelf) {
+            return res.status(403).json({ message: 'You can only update your own account' });
+        }
+
+        // Check if user is protected (system users)
+        if (user.phone_number === "SYSTEM" || 
+            user.email === "admin@roadtocareer.net" || 
+            user.email === "admin@dmoney.com" || 
+            user.email === "system@dmoney.com") {
+            return res.status(403).json({ message: "Stupid! Do not try to update this!" });
+        }
+
+        const updatedUser = { ...req.body };
+
+        // Non-admin users cannot change role or status
+        if (!isAdmin) {
+            delete updatedUser.role;
+            delete updatedUser.status;
+        }
+
+        const { error } = await exports.validateUser(updatedUser);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        await Users.update(updatedUser, { where: { id } });
+        res.status(200).json({ message: "User updated", user: updatedUser });
+
     } catch (err) {
         console.error("Error updating user:", err);
         res.status(500).json({ message: "Error updating user" });
@@ -217,52 +226,62 @@ exports.updateUser = async (req, res) => {
 
 // Partially update an existing user
 exports.partialUpdateUser = async (req, res) => {
-    if (req.user.role.toLowerCase() !== 'admin') {
-        return res.status(403).json({ message: 'Only admin can update users' });
-    }
-
     try {
         const { id } = req.params;
         const user = await Users.findOne({ where: { id } });
 
-        if (user) {
-            // Check if user is protected (system users)
-            if (user.phone_number === "SYSTEM" ||
-                user.email === "admin@roadtocareer.net" ||
-                user.email === "admin@dmoney.com" ||
-                user.email === "system@dmoney.com") {
-                return res.status(403).json({ message: "Stupid! Do not try to update this!" });
-            }
-
-            const updatedUser = { ...req.body };
-            await Users.update(updatedUser, { where: { id } });
-
-            // Send status-change notification email if status was updated to active or suspended
-            if (req.body.status === 'active' || req.body.status === 'suspended') {
-                const userName = user.getDataValue('name');
-                const userEmail = user.getDataValue('email');
-                const newStatus = req.body.status;
-
-                if (newStatus === 'active') {
-                    sendEmail(
-                        userEmail,
-                        'DMoney — Your Account Has Been Activated',
-                        `Hello ${userName},\n\nGreat news! Your DMoney account has been activated.\n\nYou can now log in and start using all features available to your account.\n\nIf you have any questions, feel free to reach out to our support team.\n\nThank you,\nDMoney Team`
-                    ).catch(err => console.error('Account activation email error:', err));
-                } else {
-                    sendEmail(
-                        userEmail,
-                        'DMoney — Your Account Has Been Suspended',
-                        `Hello ${userName},\n\nWe are writing to inform you that your DMoney account has been suspended.\n\nDuring this time, you will not be able to perform any transactions.\n\nIf you believe this is a mistake or have questions, please contact our admin team for assistance.\n\nThank you,\nDMoney Team`
-                    ).catch(err => console.error('Account suspension email error:', err));
-                }
-            }
-
-            res.status(200).json({ message: "User updated successfully", user: updatedUser });
-
-        } else {
-            res.status(404).json({ message: "User not found" });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
+
+        const isAdmin = req.user.role.toLowerCase() === 'admin';
+        const isSelf  = user.email === req.user.identifier || user.phone_number === req.user.identifier;
+
+        if (!isAdmin && !isSelf) {
+            return res.status(403).json({ message: 'You can only update your own account' });
+        }
+
+        // Check if user is protected (system users)
+        if (user.phone_number === "SYSTEM" ||
+            user.email === "admin@roadtocareer.net" ||
+            user.email === "admin@dmoney.com" ||
+            user.email === "system@dmoney.com") {
+            return res.status(403).json({ message: "Stupid! Do not try to update this!" });
+        }
+
+        const updatedUser = { ...req.body };
+
+        // Non-admin users cannot change role or status
+        if (!isAdmin) {
+            delete updatedUser.role;
+            delete updatedUser.status;
+        }
+
+        await Users.update(updatedUser, { where: { id } });
+
+        // Send status-change notification email if status was updated to active or suspended (admin only)
+        if (isAdmin && (req.body.status === 'active' || req.body.status === 'suspended')) {
+            const userName = user.getDataValue('name');
+            const userEmail = user.getDataValue('email');
+            const newStatus = req.body.status;
+
+            if (newStatus === 'active') {
+                sendEmail(
+                    userEmail,
+                    'DMoney — Your Account Has Been Activated',
+                    `Hello ${userName},\n\nGreat news! Your DMoney account has been activated.\n\nYou can now log in and start using all features available to your account.\n\nIf you have any questions, feel free to reach out to our support team.\n\nThank you,\nDMoney Team`
+                ).catch(err => console.error('Account activation email error:', err));
+            } else {
+                sendEmail(
+                    userEmail,
+                    'DMoney — Your Account Has Been Suspended',
+                    `Hello ${userName},\n\nWe are writing to inform you that your DMoney account has been suspended.\n\nDuring this time, you will not be able to perform any transactions.\n\nIf you believe this is a mistake or have questions, please contact our admin team for assistance.\n\nThank you,\nDMoney Team`
+                ).catch(err => console.error('Account suspension email error:', err));
+            }
+        }
+
+        res.status(200).json({ message: "User updated successfully", user: updatedUser });
+
     } catch (err) {
         console.error("Error updating user:", err);
         res.status(500).json({ message: "Error updating user" });
