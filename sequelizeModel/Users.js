@@ -27,6 +27,21 @@ const Users = sequelize.define('Users', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    status: {
+        type: DataTypes.ENUM('pending', 'active', 'suspended'),
+        allowNull: false,
+        defaultValue: 'pending'
+    },
+    otp: {
+        type: DataTypes.STRING(4),
+        allowNull: true,
+        defaultValue: null
+    },
+    otp_expire: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null
+    },
     photo: {
         type: DataTypes.STRING,
         allowNull: true
@@ -47,6 +62,7 @@ const predefinedUsers = [
         phone_number: "SYSTEM",
         nid: "123456789",
         role: "Agent",
+        status: "active",
         photo: null
     },
     {
@@ -56,6 +72,7 @@ const predefinedUsers = [
         phone_number: "01686606909",
         nid: "123456789",
         role: "Admin",
+        status: "active",
         photo: null
     },
     {
@@ -65,15 +82,7 @@ const predefinedUsers = [
         phone_number: "01686606901",
         nid: "123456789",
         role: "Agent",
-        photo: null
-    },
-    {
-        name: "SYSTEM",
-        email: "system@dmoney.com",
-        password: "1234",
-        phone_number: "SYSTEM",
-        nid: "123456789",
-        role: "Agent",
+        status: "active",
         photo: null
     },
     {
@@ -83,6 +92,7 @@ const predefinedUsers = [
         phone_number: "01686606902",
         nid: "123456789",
         role: "Customer",
+        status: "active",
         photo: null
     },
     {
@@ -92,6 +102,7 @@ const predefinedUsers = [
         phone_number: "01686606903",
         nid: "123456789",
         role: "Customer",
+        status: "active",
         photo: null
     },
     {
@@ -101,6 +112,7 @@ const predefinedUsers = [
         phone_number: "01686606905",
         nid: "123456789",
         role: "Merchant",
+        status: "active",
         photo: null
     }
 ];

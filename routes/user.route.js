@@ -13,7 +13,9 @@ router.post('/user/create', authenticateJWT, userController.createUser);
 router.put('/user/update/:id', authenticateJWT, userController.updateUser);
 router.patch('/user/update/:id', authenticateJWT, userController.partialUpdateUser);
 router.delete('/user/delete/:id', authenticateJWT, userController.deleteUser);
+router.post('/user/register', userController.registerUser);
 router.post('/user/login', userController.validateLoginData, userController.loginUser);
+router.post('/user/verify-otp', userController.verifyOtp);
 router.post('/user/upload/:id', userController.upload, userController.uploadPhoto);
 router.get('/user/uploads/:file', userController.retrieveImage);
 

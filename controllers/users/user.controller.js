@@ -7,6 +7,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { sequelize } = require('../../sequelizeModel/db.js');
+const { sendEmail } = require('../../services/emailHelper');
 
 exports.listUsers = async (req, res) => {
     try {
@@ -226,15 +227,37 @@ exports.partialUpdateUser = async (req, res) => {
 
         if (user) {
             // Check if user is protected (system users)
-            if (user.phone_number === "SYSTEM" || 
-                user.email === "admin@roadtocareer.net" || 
-                user.email === "admin@dmoney.com" || 
+            if (user.phone_number === "SYSTEM" ||
+                user.email === "admin@roadtocareer.net" ||
+                user.email === "admin@dmoney.com" ||
                 user.email === "system@dmoney.com") {
                 return res.status(403).json({ message: "Stupid! Do not try to update this!" });
             }
 
             const updatedUser = { ...req.body };
             await Users.update(updatedUser, { where: { id } });
+
+            // Send status-change notification email if status was updated to active or suspended
+            if (req.body.status === 'active' || req.body.status === 'suspended') {
+                const userName = user.getDataValue('name');
+                const userEmail = user.getDataValue('email');
+                const newStatus = req.body.status;
+
+                if (newStatus === 'active') {
+                    sendEmail(
+                        userEmail,
+                        'DMoney — Your Account Has Been Activated',
+                        `Hello ${userName},\n\nGreat news! Your DMoney account has been activated.\n\nYou can now log in and start using all features available to your account.\n\nIf you have any questions, feel free to reach out to our support team.\n\nThank you,\nDMoney Team`
+                    ).catch(err => console.error('Account activation email error:', err));
+                } else {
+                    sendEmail(
+                        userEmail,
+                        'DMoney — Your Account Has Been Suspended',
+                        `Hello ${userName},\n\nWe are writing to inform you that your DMoney account has been suspended.\n\nDuring this time, you will not be able to perform any transactions.\n\nIf you believe this is a mistake or have questions, please contact our admin team for assistance.\n\nThank you,\nDMoney Team`
+                    ).catch(err => console.error('Account suspension email error:', err));
+                }
+            }
+
             res.status(200).json({ message: "User updated successfully", user: updatedUser });
 
         } else {
@@ -276,6 +299,75 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
+// Self-registration — public endpoint (no auth)
+// Allowed roles: Customer, Agent, Merchant (Admin cannot self-register)
+// Only Gmail addresses (@gmail.com) are accepted
+exports.registerUser = async (req, res) => {
+    try {
+        const { name, email, password, phone_number, nid, role } = req.body;
+
+        // Only allow non-admin roles for self-registration
+        const allowedRoles = ['Customer', 'Agent', 'Merchant'];
+        if (!role || !allowedRoles.includes(role)) {
+            return res.status(400).json({ message: `Role must be one of: ${allowedRoles.join(', ')}` });
+        }
+
+        // Gmail-only restriction for self-registration
+        if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
+            return res.status(400).json({ message: 'Only Gmail addresses (@gmail.com) are allowed for registration.' });
+        }
+
+        // Validate required fields with Joi
+        const newUser = { name, email, password, phone_number, nid, role };
+        const { error } = await exports.validateUser(newUser);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        // Check duplicates — separate checks for distinct error messages
+        const emailExists = await Users.findOne({ where: { email } });
+        if (emailExists) {
+            return res.status(208).json({ message: 'An account with this email already exists' });
+        }
+
+        const phoneExists = await Users.findOne({ where: { phone_number } });
+        if (phoneExists) {
+            return res.status(208).json({ message: 'An account with this phone number already exists' });
+        }
+
+        // Verify role exists in Roles table
+        const roleExists = await Roles.findOne({ where: { role } });
+        if (!roleExists) {
+            return res.status(400).json({ message: `Invalid role: ${role}` });
+        }
+
+        // Create user with default status 'pending'
+        const user = await Users.create({ name, email, password, phone_number, nid, role, status: 'pending' });
+
+        // Send registration confirmation email (non-blocking — does not fail the request)
+        sendEmail(
+            email,
+            'DMoney — Registration Confirmation',
+            `Hello ${name},\n\nThank you for registering with DMoney!\n\nYour registration details:\n- Name: ${name}\n- Email: ${email}\n- Phone: ${phone_number}\n- Role: ${role}\n\nYour account is currently pending review. Once an admin verifies your information, your account will be activated and you will be able to perform transactions.\n\nYou will receive another email once your account status is updated.\n\nThank you,\nDMoney Team`
+        ).catch(err => console.error('Registration confirmation email error:', err));
+
+        return res.status(201).json({
+            message: 'Registration successful. Your account is pending approval by an admin.',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone_number: user.phone_number,
+                role: user.role,
+                status: user.status,
+            },
+        });
+    } catch (err) {
+        console.error('Error registering user:', err);
+        return res.status(500).json({ message: 'Error registering user', error: err.message });
+    }
+};
+
 exports.loginUser = async (req, res) => {
     try {
         const { identifier, password } = req.validatedData;
@@ -298,21 +390,122 @@ exports.loginUser = async (req, res) => {
             return res.status(401).json({ message: "Password incorrect" });
         }
 
+        const userRole       = user.getDataValue('role');
+        const userPhone      = user.getDataValue('phone_number') || '';
+        const isSystemAccount = userPhone.toUpperCase() === 'SYSTEM';
+
+        // Admin & SYSTEM account: skip OTP — return JWT directly
+        if (userRole === 'Admin' || isSystemAccount) {
+            const token = jwt.sign(
+                { identifier: identifier, role: userRole },
+                process.env.ACCESS_TOKEN_SECRET,
+                { expiresIn: process.env.expires_in }
+            );
+            return res.status(200).json({
+                message: "Login successful",
+                token: token,
+                role: userRole,
+                expiresIn: process.env.expires_in
+            });
+        }
+
+        // Customer / Agent / Merchant: generate 4-digit OTP
+        const otp        = String(Math.floor(1000 + Math.random() * 9000));
+        const otpExpire  = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+
+        await Users.update(
+            { otp: otp, otp_expire: otpExpire },
+            { where: { id: user.id } }
+        );
+
+        const userEmail = user.getDataValue('email');
+        const userName  = user.getDataValue('name');
+        const isGmail   = userEmail.toLowerCase().endsWith('@gmail.com');
+
+        // ✅ Always console.log the OTP (works for any email address)
+        console.log(`🔐 OTP for ${userEmail} [${userRole}]: ${otp}  — expires ${otpExpire.toISOString()}`);
+
+        // Send OTP email only if the user has a Gmail address
+        if (isGmail) {
+            sendEmail(
+                userEmail,
+                'DMoney — Your Login OTP',
+                `Hello ${userName},\n\nYour One-Time Password (OTP) for DMoney login is:\n\n  ${otp}\n\nThis OTP is valid for 2 minutes. Do not share it with anyone.\n\nIf you did not attempt to log in, please contact support immediately.\n\nThank you,\nDMoney Team`
+            ).catch(err => console.error('OTP email error:', err));
+        } else {
+            console.log(`📧 OTP email skipped — ${userEmail} is not a Gmail address. OTP is shown in console only.`);
+        }
+
+        return res.status(200).json({
+            message: 'OTP sent to your registered email address',
+            otpRequired: true
+        });
+
+    } catch (error) {
+        console.error("Error during login:", error);
+        res.status(500).json({ message: "An error occurred while processing the request: " + error.message });
+    }
+};
+
+// ── Separate OTP verification function ───────────────────────────────────────
+exports.verifyOtp = async (req, res) => {
+    try {
+        const { identifier, otp } = req.body;
+
+        if (!identifier || !otp) {
+            return res.status(400).json({ message: 'Identifier and OTP are required' });
+        }
+
+        const user = await Users.findOne({
+            where: {
+                [require('sequelize').Op.or]: [
+                    { email: identifier },
+                    { phone_number: identifier }
+                ]
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const storedOtp    = user.getDataValue('otp');
+        const otpExpire    = user.getDataValue('otp_expire');
+
+        if (!storedOtp || !otpExpire) {
+            return res.status(400).json({ message: 'No OTP found. Please login again to request a new OTP.' });
+        }
+
+        // Check expiry first
+        if (new Date() > new Date(otpExpire)) {
+            await Users.update({ otp: null, otp_expire: null }, { where: { id: user.id } });
+            return res.status(401).json({ message: 'OTP has expired. Please login again to receive a new OTP.' });
+        }
+
+        // Check OTP match
+        if (storedOtp !== String(otp).trim()) {
+            return res.status(401).json({ message: 'Invalid OTP. Please try again.' });
+        }
+
+        // ✅ OTP valid — clear it and issue JWT
+        await Users.update({ otp: null, otp_expire: null }, { where: { id: user.id } });
+
         const token = jwt.sign(
             { identifier: identifier, role: user.role },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: process.env.expires_in }
         );
 
-        res.status(200).json({
-            message: "Login successful",
+        return res.status(200).json({
+            message: 'Login successful',
             token: token,
             role: user.role,
             expiresIn: process.env.expires_in
         });
+
     } catch (error) {
-        console.error("Error during login:", error);
-        res.status(500).json({ message: "An error occurred while processing the request: " + error.message });
+        console.error('Error verifying OTP:', error);
+        return res.status(500).json({ message: 'Error verifying OTP: ' + error.message });
     }
 };
 

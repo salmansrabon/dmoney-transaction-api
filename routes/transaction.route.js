@@ -5,6 +5,7 @@ const withdrawController = require('../controllers/transactions/withdraw.control
 const transactionDetailsController = require('../controllers/transactions/transactionDetails.controller.js');
 const sendMoneyController = require('../controllers/transactions/sendMoney.controller.js');
 const paymentController = require('../controllers/transactions/payment.controller.js');
+const adminDepositController = require('../controllers/transactions/adminDeposit.controller.js');
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.post('/transaction/deposit', authenticateJWT, depositController.handleDep
 router.post('/transaction/withdraw', authenticateJWT, withdrawController.handleWithdraw);
 router.post('/transaction/sendmoney', authenticateJWT, sendMoneyController.handleSendMoney);
 router.post('/transaction/payment', authenticateJWT, paymentController.handlePayment);
+router.post('/transaction/adminDeposit', authenticateJWT, adminDepositController.handleAdminDeposit);
 
 module.exports = router;
