@@ -257,6 +257,18 @@ exports.partialUpdateUser = async (req, res) => {
             delete updatedUser.status;
         }
 
+        // If email is being updated, enforce Gmail-only restriction
+        if (updatedUser.email !== undefined) {
+            const emailSchema = Joi.string().email().pattern(/@gmail\.com$/i).messages({
+                'string.pattern.base': 'Only Gmail addresses (@gmail.com) are allowed.',
+                'string.email': 'Please provide a valid email address.'
+            });
+            const { error: emailError } = emailSchema.validate(updatedUser.email);
+            if (emailError) {
+                return res.status(400).json({ message: emailError.message });
+            }
+        }
+
         await Users.update(updatedUser, { where: { id } });
 
         // Send status-change notification email if status was updated to active or suspended (admin only)
@@ -320,25 +332,14 @@ exports.deleteUser = async (req, res) => {
 
 // Self-registration — public endpoint (no auth)
 // Allowed roles: Customer, Agent, Merchant (Admin cannot self-register)
-// Only Gmail addresses (@gmail.com) are accepted
+// Only Gmail addresses (@gmail.com) are accepted — enforced via Joi schema
 exports.registerUser = async (req, res) => {
     try {
         const { name, email, password, phone_number, nid, role } = req.body;
 
-        // Only allow non-admin roles for self-registration
-        const allowedRoles = ['Customer', 'Agent', 'Merchant'];
-        if (!role || !allowedRoles.includes(role)) {
-            return res.status(400).json({ message: `Role must be one of: ${allowedRoles.join(', ')}` });
-        }
-
-        // Gmail-only restriction for self-registration
-        if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
-            return res.status(400).json({ message: 'Only Gmail addresses (@gmail.com) are allowed for registration.' });
-        }
-
-        // Validate required fields with Joi
+        // Validate all fields including Gmail-only and allowed-role rules via dedicated Joi schema
         const newUser = { name, email, password, phone_number, nid, role };
-        const { error } = await exports.validateUser(newUser);
+        const { error } = exports.validateRegistration(newUser);
         if (error) {
             return res.status(400).json({ message: error.details[0].message });
         }
@@ -616,15 +617,50 @@ exports.retrieveImage = (req, res) => {
     });
 };
 
-// Validation function for user creation and updates
+// Validation function for user creation and updates (admin)
+// Gmail-only is enforced globally — both admin-created and self-registered users must have @gmail.com
 exports.validateUser = async (user) => {
     const schema = Joi.object({
         name: Joi.string().min(3).max(50).required(),
-        email: Joi.string().min(5).max(255).required().email(),
+        email: Joi.string()
+            .min(5)
+            .max(255)
+            .required()
+            .email()
+            .pattern(/@gmail\.com$/i)
+            .messages({
+                'string.pattern.base': 'Only Gmail addresses (@gmail.com) are allowed.'
+            }),
         password: Joi.string().min(4).max(1024).required(),
         phone_number: Joi.string().min(11).max(11).required(),
         nid: Joi.string().min(7).max(13).required(),
         role: Joi.string().min(3).max(50).required()
     });
     return schema.validate(user);
+};
+
+// Validation function specifically for self-registration — enforces Gmail-only at schema level
+exports.validateRegistration = (user) => {
+    const schema = Joi.object({
+        name: Joi.string().min(3).max(50).required(),
+        email: Joi.string()
+            .min(5)
+            .max(255)
+            .required()
+            .email()
+            .pattern(/@gmail\.com$/i)
+            .messages({
+                'string.pattern.base': 'Only Gmail addresses (@gmail.com) are accepted for registration.'
+            }),
+        password: Joi.string().min(4).max(1024).required(),
+        phone_number: Joi.string().length(11).required(),
+        nid: Joi.string().min(7).max(13).required(),
+        role: Joi.string()
+            .valid('Customer', 'Agent', 'Merchant')
+            .required()
+            .messages({
+                'any.only': 'Role must be one of: Customer, Agent, Merchant'
+            })
+    });
+    return schema.validate(user, { abortEarly: true });
 };

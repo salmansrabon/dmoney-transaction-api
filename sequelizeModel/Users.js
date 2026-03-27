@@ -77,7 +77,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Agent",
-        email: "agent@dmoney.com",
+        email: "salmansrabon+agent@gmail.com",
         password: "1234",
         phone_number: "01686606901",
         nid: "123456789",
@@ -87,7 +87,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Customer 1",
-        email: "customer1@dmoney.com",
+        email: "salmansrabon+customer1@gmail.com",
         password: "1234",
         phone_number: "01686606902",
         nid: "123456789",
@@ -97,7 +97,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Customer 2",
-        email: "customer2@dmoney.com",
+        email: "salmansrabon+customer2@gmail.com",
         password: "1234",
         phone_number: "01686606903",
         nid: "123456789",
@@ -107,7 +107,7 @@ const predefinedUsers = [
     },
     {
         name: "Test Merchant",
-        email: "merchant@dmoney.com",
+        email: "salmansrabon+merchant@gmail.com",
         password: "1234",
         phone_number: "01686606905",
         nid: "123456789",
