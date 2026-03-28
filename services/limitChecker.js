@@ -75,10 +75,15 @@ async function getUsage(customerPhone, periodStart) {
 
 /**
  * Checks all active TransactionLimits for role='Customer' against the current
- * usage + the proposed new amount.
+ * usage + the proposed new transaction's total debit.
+ *
+ * IMPORTANT: `totalDebit` must be the FULL amount that will be written to the
+ * ledger debit row — i.e. (transfer amount + fee).  The historical usage query
+ * sums the raw debit column (which already includes fees), so the incoming value
+ * must use the same basis to keep the comparison consistent.
  *
  * @param {string} customerPhone  - Sender's phone number
- * @param {number} amount         - Proposed transaction amount (Tk, EXCLUDING fee)
+ * @param {number} totalDebit     - Total amount that will be debited (amount + fee)
  *
  * @returns {Promise<{
  *   allowed: boolean,
@@ -94,7 +99,7 @@ async function getUsage(customerPhone, periodStart) {
  *   }
  * }>}
  */
-async function checkCustomerLimits(customerPhone, amount) {
+async function checkCustomerLimits(customerPhone, totalDebit) {
     // Load all active limits for Customer role
     const limits = await TransactionLimit.findAll({
         where: { role: 'Customer', is_active: 1 }
@@ -136,12 +141,12 @@ async function checkCustomerLimits(customerPhone, amount) {
             };
         }
 
-        // Check cumulative AMOUNT limit
-        if (usedAmount + amount > maxAmount) {
+        // Check cumulative AMOUNT limit (compare total debit incl. fee against remaining quota)
+        if (usedAmount + totalDebit > maxAmount) {
             return {
                 allowed: false,
                 message: `${period.charAt(0).toUpperCase() + period.slice(1)} amount limit exceeded. ` +
-                         `You can send at most ${remainingAmount.toFixed(2)} Tk more this ${period} period ` +
+                         `You can spend at most ${remainingAmount.toFixed(2)} Tk more (incl. fees) this ${period} period ` +
                          `(limit: ${maxAmount} Tk, used: ${usedAmount.toFixed(2)} Tk).`,
                 details
             };
