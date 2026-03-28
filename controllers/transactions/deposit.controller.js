@@ -37,9 +37,14 @@ exports.handleDeposit = async (req, res, next) => {
     if (from_account_exists && to_account_exists) {
 
         // ── Authorization: the token owner must be the from_account holder ────
+        // Case-insensitive comparison handles the SYSTEM account being logged in
+        // with either "SYSTEM" or "system" — both must match the DB value 'SYSTEM'.
         const authIdentifier = req.user.identifier;
-        if (from_account_exists.getDataValue('phone_number') !== authIdentifier &&
-            from_account_exists.getDataValue('email') !== authIdentifier) {
+        const dbPhone = (from_account_exists.getDataValue('phone_number') || '').toLowerCase();
+        const dbEmail = (from_account_exists.getDataValue('email') || '').toLowerCase();
+        const authId  = authIdentifier.toLowerCase();
+
+        if (dbPhone !== authId && dbEmail !== authId) {
             return res.status(403).json({
                 message: "Unauthorized: you can only initiate transactions from your own account"
             });
