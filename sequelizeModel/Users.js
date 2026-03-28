@@ -42,6 +42,16 @@ const Users = sequelize.define('Users', {
         allowNull: true,
         defaultValue: null
     },
+    reset_token: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+        defaultValue: null
+    },
+    reset_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null
+    },
     photo: {
         type: DataTypes.STRING,
         allowNull: true
