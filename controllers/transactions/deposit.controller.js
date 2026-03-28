@@ -121,7 +121,7 @@ exports.handleDeposit = async (req, res, next) => {
                             account:          to_account,
                             from_account:     from_account,
                             to_account:       to_account,
-                            description:      "Agent Account Top-up from SYSTEM",
+                            description:      "Top-up from SYSTEM",
                             trnxId:           trnxId,
                             debit:            0,
                             credit:           amt,
