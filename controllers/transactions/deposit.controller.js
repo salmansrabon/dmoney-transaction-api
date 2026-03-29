@@ -23,7 +23,12 @@ const { Transaction } = require('sequelize');
  */
 exports.handleDeposit = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
+    const amt = Number(amount);
     const trnxId = generateTrnxId();
+
+    if (!Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({ message: 'Amount must be a valid number greater than 0' });
+    }
 
     // Load commission rules from DB
     const config         = await Commission.getConfig('Deposit');
@@ -86,10 +91,7 @@ exports.handleDeposit = async (req, res, next) => {
                 });
             }
 
-            const amt = Number(amount);
-            if (!amt || amt <= 0) {
-                return res.status(400).json({ message: "Amount must be greater than 0" });
-            }
+
 
             try {
                 // Atomic: lock SYSTEM balance, validate, then write both ledger rows
@@ -165,10 +167,10 @@ exports.handleDeposit = async (req, res, next) => {
                 });
             }
 
-            var commission = commissionRate * amount;
+            var commission = commissionRate * amt;
 
             // Amount range check
-            if (amount < minAmount || amount > maxLimit) {
+            if (amt < minAmount || amt > maxLimit) {
                 return res.status(400).json({
                     message: `Minimum deposit amount is ${minAmount} tk and maximum deposit amount is ${maxLimit} tk`
                 });
@@ -190,7 +192,7 @@ exports.handleDeposit = async (req, res, next) => {
                         );
                         const agentBalance = parseFloat(agentRows[0].Balance) || 0;
 
-                        if (agentBalance <= 0 || amount > agentBalance) {
+                        if (agentBalance <= 0 || amt > agentBalance) {
                             const err = new Error('INSUFFICIENT_BALANCE');
                             err.balance = agentBalance;
                             throw err;
@@ -208,7 +210,7 @@ exports.handleDeposit = async (req, res, next) => {
                         }
 
                         const remaining_limit = maxLimit - customerBalance;
-                        if (amount > remaining_limit) {
+                        if (amt > remaining_limit) {
                             const err = new Error('AMOUNT_EXCEEDS_REMAINING_LIMIT');
                             err.remaining = remaining_limit;
                             throw err;
@@ -220,7 +222,7 @@ exports.handleDeposit = async (req, res, next) => {
                             to_account:       to_account,
                             description:      "Deposit Commission",
                             trnxId:           trnxId,
-                            debit:            amount,
+                            debit:            amt,
                             credit:           commission,
                             transaction_type: 'Deposit'
                         };
@@ -231,7 +233,7 @@ exports.handleDeposit = async (req, res, next) => {
                             description:      "Deposit",
                             trnxId:           trnxId,
                             debit:            0,
-                            credit:           amount,
+                            credit:           amt,
                             transaction_type: 'Deposit'
                         };
 
@@ -277,3 +279,4 @@ exports.handleDeposit = async (req, res, next) => {
         }
     }
 };
+

@@ -9,7 +9,12 @@ const { Transaction } = require('sequelize');
 
 exports.handlePayment = async (req, res, next) => {
     const { from_account, to_account, amount, discount_code, discount_amount } = req.body;
+    const amt = Number(amount);
     const trnxId = generateTrnxId();
+
+    if (!Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({ message: 'Amount must be a valid number greater than 0' });
+    }
 
     // Load commission rules from DB
     const config          = await Commission.getConfig('Payment');
@@ -46,12 +51,12 @@ exports.handlePayment = async (req, res, next) => {
         const toRole   = to_account_exists.getDataValue('role');
 
         // Apply discount if provided
-        let finalAmount    = amount;
+        let finalAmount    = amt;
         let discountApplied = false;
         if (discount_code && discount_amount) {
             const envDiscountCode = process.env.DISCOUNT_CODE;
             if (discount_code === envDiscountCode) {
-                finalAmount     = amount - (amount * (discount_amount / 100));
+                finalAmount     = amt - (amt * (discount_amount / 100));
                 discountApplied = true;
             }
         }
@@ -148,7 +153,7 @@ exports.handlePayment = async (req, res, next) => {
 
                 if (discountApplied) {
                     response.discountedTotal  = finalAmount;
-                    response.discountedAmount = amount - finalAmount;
+                    response.discountedAmount = amt - finalAmount;
                 }
 
                 return res.status(201).json(response);
@@ -175,3 +180,4 @@ exports.handlePayment = async (req, res, next) => {
         }
     }
 };
+

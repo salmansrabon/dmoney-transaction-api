@@ -9,12 +9,17 @@ const { Transaction } = require('sequelize');
 
 exports.handleSendMoney = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
+    const amt = Number(amount);
     const trnxId = generateTrnxId();
+
+    if (!Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({ message: 'Amount must be a valid number greater than 0' });
+    }
 
     // Load commission rules from DB
     const config    = await Commission.getConfig('SendMoney');
     const feeRule   = config.rules.find(r => r.recipient === 'SYSTEM');
-    const p2pFee    = feeRule ? Commission.calcFee(feeRule, amount) : 5;
+    const p2pFee    = feeRule ? Commission.calcFee(feeRule, amt) : 5;
     const minAmount = config.minTxnAmount || 10;
 
     const from_account_exists = await Users.findOne({ where: { phone_number: from_account } });
@@ -53,7 +58,7 @@ exports.handleSendMoney = async (req, res, next) => {
             // ── Daily / Monthly limit check ──────────────────────────────────
             // Pass the full debit (amount + fee) so the check uses the same
             // basis as the historical SUM(debit) query in limitChecker.js.
-            const limitCheck = await checkCustomerLimits(from_account, amount + p2pFee);
+            const limitCheck = await checkCustomerLimits(from_account, amt + p2pFee);
             if (!limitCheck.allowed) {
                 return res.status(400).json({
                     message: limitCheck.message,
@@ -62,7 +67,7 @@ exports.handleSendMoney = async (req, res, next) => {
             }
 
             // ── Minimum amount check (no DB needed — do it before the transaction) ──
-            if (amount < minAmount) {
+            if (amt < minAmount) {
                 return res.status(400).json({ message: `Minimum amount is ${minAmount} tk` });
             }
 
@@ -81,7 +86,7 @@ exports.handleSendMoney = async (req, res, next) => {
                         );
                         const currentBalance = parseFloat(balanceRows[0].Balance) || 0;
 
-                        if (currentBalance <= 0 || amount + p2pFee > currentBalance) {
+                        if (currentBalance <= 0 || amt + p2pFee > currentBalance) {
                             // Throw to trigger automatic rollback
                             const err = new Error('INSUFFICIENT_BALANCE');
                             err.balance = currentBalance;
@@ -94,7 +99,7 @@ exports.handleSendMoney = async (req, res, next) => {
                             to_account:       to_account,
                             description:      "Send Money",
                             trnxId:           trnxId,
-                            debit:            amount + p2pFee,
+                            debit:            amt + p2pFee,
                             credit:           0,
                             transaction_type: 'SendMoney'
                         };
@@ -105,7 +110,7 @@ exports.handleSendMoney = async (req, res, next) => {
                             description:      "Send Money",
                             trnxId:           trnxId,
                             debit:            0,
-                            credit:           amount,
+                            credit:           amt,
                             transaction_type: 'SendMoney'
                         };
                         const creditTrnxToSystem = {
@@ -155,3 +160,5 @@ exports.handleSendMoney = async (req, res, next) => {
         }
     }
 };
+
+

@@ -25,7 +25,7 @@ const Transactions = sequelize.define('Transactions', {
         unique: false
     },
     debit: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DOUBLE,
         allowNull: false
     },
     credit: {

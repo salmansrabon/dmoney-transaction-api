@@ -9,7 +9,12 @@ const { Transaction } = require('sequelize');
 
 exports.handleWithdraw = async (req, res, next) => {
     const { from_account, to_account, amount } = req.body;
+    const amt = Number(amount);
     const trnxId = generateTrnxId();
+
+    if (!Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({ message: 'Amount must be a valid number greater than 0' });
+    }
 
     // Load commission rules from DB
     const config         = await Commission.getConfig('Withdraw');
@@ -18,8 +23,8 @@ exports.handleWithdraw = async (req, res, next) => {
     const minAmount      = config.minTxnAmount        || 10;
 
     // Calculate withdraw fee using the DB rule (respects min_fee floor)
-    var withdrawFee = feeRule ? Commission.calcFee(feeRule, amount) : Math.max(amount * 0.01, 5);
-    var commission  = commissionRate * amount;
+    var withdrawFee = feeRule ? Commission.calcFee(feeRule, amt) : Math.max(amt * 0.01, 5);
+    var commission  = commissionRate * amt;
 
     const from_account_exists = await Users.findOne({ where: { phone_number: from_account } });
     const to_account_exists   = await Users.findOne({ where: { phone_number: to_account } });
@@ -58,7 +63,7 @@ exports.handleWithdraw = async (req, res, next) => {
             // Pass the full debit (amount + fee) so the check uses the same
             // basis as the historical SUM(debit) query in limitChecker.js.
             if (fromRole === "Customer") {
-                const limitCheck = await checkCustomerLimits(from_account, amount + withdrawFee);
+                const limitCheck = await checkCustomerLimits(from_account, amt + withdrawFee);
                 if (!limitCheck.allowed) {
                     return res.status(400).json({
                         message: limitCheck.message,
@@ -68,7 +73,7 @@ exports.handleWithdraw = async (req, res, next) => {
             }
 
             // ── Minimum amount check (no DB needed — do it before the transaction) ──
-            if (amount < minAmount) {
+            if (amt < minAmount) {
                 return res.status(400).json({
                     message:        `Minimum withdraw amount is ${minAmount} tk`,
                     currentBalance: await getBalance(from_account)
@@ -90,7 +95,7 @@ exports.handleWithdraw = async (req, res, next) => {
                         );
                         const currentBalance = parseFloat(balanceRows[0].Balance) || 0;
 
-                        if (currentBalance <= 0 || amount + withdrawFee > currentBalance) {
+                        if (currentBalance <= 0 || amt + withdrawFee > currentBalance) {
                             const err = new Error('INSUFFICIENT_BALANCE');
                             err.balance = currentBalance;
                             throw err;
@@ -102,7 +107,7 @@ exports.handleWithdraw = async (req, res, next) => {
                             to_account:       to_account,
                             description:      "Withdraw",
                             trnxId:           trnxId,
-                            debit:            amount + withdrawFee,
+                            debit:            amt + withdrawFee,
                             credit:           0,
                             transaction_type: 'Withdraw'
                         };
@@ -113,7 +118,7 @@ exports.handleWithdraw = async (req, res, next) => {
                             description:      "Withdraw",
                             trnxId:           trnxId,
                             debit:            0,
-                            credit:           amount + commission,
+                            credit:           amt + commission,
                             transaction_type: 'Withdraw'
                         };
                         const creditTrnxToSystem = {
@@ -163,3 +168,4 @@ exports.handleWithdraw = async (req, res, next) => {
         }
     }
 };
+
