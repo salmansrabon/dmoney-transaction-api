@@ -8,6 +8,20 @@ const fs = require('fs');
 const path = require('path');
 const { sequelize } = require('../../sequelizeModel/db.js');
 const { sendEmail } = require('../../services/emailHelper');
+const { sendPersonalEmail } = require('../../services/gmailPersonalHelper');
+
+// Path to the service account key — checked at call time
+const SERVICE_ACCOUNT_FILE = path.join(__dirname, '../../config/gmail-service-account.json');
+
+/**
+ * Unified mailer: uses the Google Service Account when the key file is present,
+ * otherwise falls back to personal Gmail SMTP (Nodemailer).
+ */
+function mailer(to, subject, text, contentType) {
+    return fs.existsSync(SERVICE_ACCOUNT_FILE)
+        ? sendEmail(to, subject, text, contentType)
+        : sendPersonalEmail(to, subject, text, contentType);
+}
 
 exports.listUsers = async (req, res) => {
     try {
@@ -278,13 +292,13 @@ exports.partialUpdateUser = async (req, res) => {
             const newStatus = req.body.status;
 
             if (newStatus === 'active') {
-                sendEmail(
+                mailer(
                     userEmail,
                     'DMoney — Your Account Has Been Activated',
                     `Hello ${userName},\n\nGreat news! Your DMoney account has been activated.\n\nYou can now log in and start using all features available to your account.\n\nIf you have any questions, feel free to reach out to our support team.\n\nThank you,\nDMoney Team`
                 ).catch(err => console.error('Account activation email error:', err));
             } else {
-                sendEmail(
+                mailer(
                     userEmail,
                     'DMoney — Your Account Has Been Suspended',
                     `Hello ${userName},\n\nWe are writing to inform you that your DMoney account has been suspended.\n\nDuring this time, you will not be able to perform any transactions.\n\nIf you believe this is a mistake or have questions, please contact our admin team for assistance.\n\nThank you,\nDMoney Team`
@@ -365,7 +379,7 @@ exports.registerUser = async (req, res) => {
         const user = await Users.create({ name, email, password, phone_number, nid, role, status: 'pending' });
 
         // Send registration confirmation email (non-blocking — does not fail the request)
-        sendEmail(
+        mailer(
             email,
             'DMoney — Registration Confirmation',
             `Hello ${name},\n\nThank you for registering with DMoney!\n\nYour registration details:\n- Name: ${name}\n- Email: ${email}\n- Phone: ${phone_number}\n- Role: ${role}\n\nYour account is currently pending review. Once an admin verifies your information, your account will be activated and you will be able to perform transactions.\n\nYou will receive another email once your account status is updated.\n\nThank you,\nDMoney Team`
@@ -447,7 +461,7 @@ exports.loginUser = async (req, res) => {
 
         // Send OTP email only if the user has a Gmail address
         if (isGmail) {
-            sendEmail(
+            mailer(
                 userEmail,
                 'DMoney — Your Login OTP',
                 `Hello ${userName},\n\nYour One-Time Password (OTP) for DMoney login is:\n\n  ${otp}\n\nThis OTP is valid for 2 minutes. Do not share it with anyone.\n\nIf you did not attempt to log in, please contact support immediately.\n\nThank you,\nDMoney Team`
