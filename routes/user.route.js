@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateJWT, publicAuthenticateJWT } = require('../jwtMiddleware');
 const userController = require('../controllers/users/user.controller.js');
+const forgotPasswordController = require('../controllers/users/forgotPassword.controller.js');
 
 const router = express.Router();
 
@@ -13,7 +14,11 @@ router.post('/user/create', authenticateJWT, userController.createUser);
 router.put('/user/update/:id', authenticateJWT, userController.updateUser);
 router.patch('/user/update/:id', authenticateJWT, userController.partialUpdateUser);
 router.delete('/user/delete/:id', authenticateJWT, userController.deleteUser);
+router.post('/user/register', userController.registerUser);
 router.post('/user/login', userController.validateLoginData, userController.loginUser);
+router.post('/user/verify-otp', userController.verifyOtp);
+router.post('/user/forgot-password', forgotPasswordController.forgotPassword);
+router.post('/user/reset-password', forgotPasswordController.resetPassword);
 router.post('/user/upload/:id', userController.upload, userController.uploadPhoto);
 router.get('/user/uploads/:file', userController.retrieveImage);
 

@@ -2,10 +2,12 @@ openapi: 3.0.0
 info:
   title: User Management API
   version: 1.0.0
-  description: API for managing users, including login, creation, and updates.
+  description: API for managing users, including registration, login, OTP verification, password reset, creation, and updates.
 
 servers:
-  - url: http://localhost:3000
+  - url: https://dmoney.roadtocareer.net
+    description: Production server
+  - url: http://localhost:5000
     description: Local server
 
 paths:
@@ -28,7 +30,7 @@ paths:
     get:
       summary: Get list of users
       security:
-        - JWTAuth: []
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -65,6 +67,9 @@ paths:
                   message:
                     type: string
                     example: User list
+                  total:
+                    type: integer
+                    example: 50
                   count:
                     type: integer
                     example: 10
@@ -96,7 +101,7 @@ paths:
           schema:
             type: integer
       security:
-        - JWTAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: User found with balance
@@ -236,9 +241,23 @@ paths:
         - name: role
           in: path
           required: true
-          description: User role
+          description: User role (e.g. Customer, Agent, Merchant, Admin)
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number (default 1)
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of results per page (default 50)
+          schema:
+            type: integer
+            default: 50
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
@@ -254,6 +273,12 @@ paths:
                   count:
                     type: integer
                     example: 5
+                  totalPages:
+                    type: integer
+                    example: 1
+                  currentPage:
+                    type: integer
+                    example: 1
                   users:
                     type: array
                     items:
@@ -267,16 +292,124 @@ paths:
                           type: string
                         phone_number:
                           type: string
-                        balance:
-                          type: number
-                          format: float
+                        nid:
+                          type: string
+                        role:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+
+  /user/register:
+    post:
+      summary: Self-register a new user account
+      description: |
+        Public endpoint — no authentication required.
+        Allowed roles: **Customer**, **Agent**, **Merchant** (Admin cannot self-register).
+        Only Gmail addresses (`@gmail.com`) are accepted.
+        Account status will be set to **pending** and must be activated by an admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - phone_number
+                - nid
+                - role
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                  minLength: 3
+                  maxLength: 50
+                email:
+                  type: string
+                  format: email
+                  example: johndoe@gmail.com
+                  description: Must be a Gmail address (@gmail.com)
+                password:
+                  type: string
+                  example: pass1234
+                  minLength: 4
+                phone_number:
+                  type: string
+                  example: "01700000000"
+                  description: Must be exactly 11 digits
+                nid:
+                  type: string
+                  example: "1234567890"
+                  description: National ID (7–13 characters)
+                role:
+                  type: string
+                  enum: [Customer, Agent, Merchant]
+                  example: Customer
+      responses:
+        '201':
+          description: Registration successful — account is pending admin approval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Registration successful. Your account is pending approval by an admin.
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone_number:
+                        type: string
+                      role:
+                        type: string
+                      status:
+                        type: string
+                        example: pending
+        '208':
+          description: User already exists (duplicate email or phone number)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: An account with this email already exists
+        '400':
+          description: Validation error (invalid role, email format, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
 
   /user/create:
     post:
-      summary: Create a new user
+      summary: Create a new user (Admin only)
       security:
         - BearerAuth: []
-        - XAuthSecretKey: []  # Use custom header
+        - XAuthSecretKey: []
       parameters:
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       requestBody:
@@ -285,19 +418,33 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - email
+                - password
+                - phone_number
+                - nid
+                - role
               properties:
                 name:
                   type: string
+                  example: Jane Smith
                 email:
                   type: string
+                  format: email
+                  example: janesmith@gmail.com
                 password:
                   type: string
+                  example: pass1234
                 phone_number:
                   type: string
+                  example: "01800000000"
                 nid:
                   type: string
+                  example: "9876543210"
                 role:
                   type: string
+                  example: Customer
       responses:
         '201':
           description: User created successfully
@@ -324,8 +471,18 @@ paths:
                         type: string
                       role:
                         type: string
+        '208':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User already exists
         '400':
-          description: Invalid role or user already exists
+          description: Invalid role or validation error
           content:
             application/json:
               schema:
@@ -343,9 +500,298 @@ paths:
                   message:
                     type: string
 
+  /user/login:
+    post:
+      summary: Login with email or phone number and password
+      description: |
+        Admin & SYSTEM accounts receive a JWT token directly.
+        Customer / Agent / Merchant accounts trigger an OTP to their registered Gmail address — use `POST /user/verify-otp` to exchange the OTP for a token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@gmail.com
+                  description: Either email or phone_number must be provided
+                phone_number:
+                  type: string
+                  example: "01700000000"
+                  description: Either email or phone_number must be provided
+                password:
+                  type: string
+                  example: pass1234
+      responses:
+        '200':
+          description: Login successful (Admin/SYSTEM) or OTP sent (Customer/Agent/Merchant)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - description: Admin/SYSTEM — JWT returned directly
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Login successful
+                      token:
+                        type: string
+                      role:
+                        type: string
+                      expiresIn:
+                        type: string
+                  - description: Customer/Agent/Merchant — OTP required
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: OTP sent to your registered email address
+                      otpRequired:
+                        type: boolean
+                        example: true
+        '400':
+          description: Missing or invalid login data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /user/verify-otp:
+    post:
+      summary: Verify OTP and receive JWT token
+      description: |
+        After a successful login attempt for Customer / Agent / Merchant roles, an OTP is sent to
+        the user's Gmail. Submit the OTP here along with the same identifier (email or phone_number)
+        used during login to receive a JWT token. The OTP is valid for **2 minutes**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - identifier
+                - otp
+              properties:
+                identifier:
+                  type: string
+                  description: The email address or phone number used during login
+                  example: user@gmail.com
+                otp:
+                  type: string
+                  description: 4-digit OTP received in the email
+                  example: "1234"
+      responses:
+        '200':
+          description: OTP verified — JWT token returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Login successful
+                  token:
+                    type: string
+                  role:
+                    type: string
+                  expiresIn:
+                    type: string
+        '400':
+          description: Missing identifier/OTP or no OTP found for this user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Invalid OTP or OTP has expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /user/forgot-password:
+    post:
+      summary: Request a password reset link
+      description: |
+        Accepts an email or phone number. If the account exists and is associated with a Gmail address,
+        a password reset link is sent to the registered Gmail. The link expires in **1 hour**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@gmail.com
+                  description: Either email or phone_number must be provided
+                phone_number:
+                  type: string
+                  example: "01700000000"
+                  description: Either email or phone_number must be provided
+      responses:
+        '200':
+          description: Password reset link sent to the registered email address
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password reset link has been sent to your registered email address.
+        '400':
+          description: Missing identifier or non-Gmail account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /user/reset-password:
+    post:
+      summary: Reset password using a valid reset token
+      description: |
+        Submit the token received in the password reset email along with the new password.
+        The token is valid for **1 hour**. Both `password` and `confirmPassword` must match.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+                - confirmPassword
+              properties:
+                token:
+                  type: string
+                  description: The reset token received via email
+                  example: "a1b2c3d4e5f6..."
+                password:
+                  type: string
+                  description: New password (minimum 4 characters)
+                  example: newpass1234
+                confirmPassword:
+                  type: string
+                  description: Must match the new password
+                  example: newpass1234
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password has been reset successfully. Please login with your new password.
+        '400':
+          description: Missing fields, passwords do not match, password too short, or invalid/expired token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
   /user/update/{id}:
     put:
-      summary: Update user by ID (Full update)
+      summary: Update user by ID (Full update — Admin or own account)
       security:
         - BearerAuth: []
         - XAuthSecretKey: []
@@ -363,6 +809,13 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - email
+                - password
+                - phone_number
+                - nid
+                - role
               properties:
                 name:
                   type: string
@@ -412,7 +865,7 @@ paths:
                   message:
                     type: string
         '403':
-          description: Only admin can update users
+          description: Not authorized to update this user
           content:
             application/json:
               schema:
@@ -431,8 +884,8 @@ paths:
                     type: string
 
     patch:
-      summary: Partially update user by ID
-      description: Update specific fields of a user without requiring all fields
+      summary: Partially update user by ID (Admin or own account)
+      description: Update specific fields of a user without requiring all fields. Admin can also update `status` (active/suspended).
       security:
         - BearerAuth: []
         - XAuthSecretKey: []
@@ -455,6 +908,7 @@ paths:
                   type: string
                 email:
                   type: string
+                  description: Must be a Gmail address (@gmail.com)
                 password:
                   type: string
                 phone_number:
@@ -463,6 +917,11 @@ paths:
                   type: string
                 role:
                   type: string
+                  description: Admin only
+                status:
+                  type: string
+                  enum: [active, suspended, pending]
+                  description: Admin only
       responses:
         '200':
           description: User partially updated successfully
@@ -473,7 +932,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: User updated
+                    example: User updated successfully
                   user:
                     type: object
                     properties:
@@ -489,6 +948,8 @@ paths:
                         type: string
                       role:
                         type: string
+                      status:
+                        type: string
         '400':
           description: Validation error
           content:
@@ -499,7 +960,7 @@ paths:
                   message:
                     type: string
         '403':
-          description: Only admin can update users
+          description: Not authorized to update this user
           content:
             application/json:
               schema:
@@ -517,11 +978,9 @@ paths:
                   message:
                     type: string
 
-
-
   /user/delete/{id}:
     delete:
-      summary: Delete user by ID
+      summary: Delete user by ID (Admin only)
       security:
         - BearerAuth: []
         - XAuthSecretKey: []
@@ -545,7 +1004,7 @@ paths:
                     type: string
                     example: User deleted successfully
         '403':
-          description: Cannot delete SYSTEM user or admin
+          description: Cannot delete protected SYSTEM/admin user, or caller is not admin
           content:
             application/json:
               schema:
@@ -555,74 +1014,6 @@ paths:
                     type: string
         '404':
           description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-
-  /user/login:
-    post:
-      summary: Login and get a JWT token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-      responses:
-        '200':
-          description: Successful login
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Login successfully
-                  token:
-                    type: string
-                  role:
-                    type: string
-                  expiresIn:
-                    type: string
-        '400':
-          description: Missing or invalid login data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '401':
-          description: Incorrect password
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '500':
-          description: Internal server error
           content:
             application/json:
               schema:
@@ -633,7 +1024,7 @@ paths:
 
   /user/upload/{id}:
     post:
-      summary: Upload a photo for a user
+      summary: Upload a profile photo for a user
       security:
         - BearerAuth: []
       parameters:
@@ -652,6 +1043,7 @@ paths:
                 image:
                   type: string
                   format: binary
+                  description: Image file (max 1 MB)
       responses:
         '200':
           description: Photo uploaded successfully
@@ -695,8 +1087,8 @@ paths:
 
   /user/uploads/{file}:
     get:
-      summary: Retrieve uploaded user photo
-      description: Get the uploaded image file for a user
+      summary: Retrieve uploaded user profile photo
+      description: Get the uploaded image file for a user by filename
       parameters:
         - name: file
           in: path
@@ -725,15 +1117,17 @@ paths:
 
 components:
   securitySchemes:
-    JWTAuth:
+    BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT token obtained from /user/login or /user/verify-otp
 
-  XAuthSecretKey:
+    XAuthSecretKey:
       type: apiKey
       in: header
       name: X-AUTH-SECRET-KEY
+      description: Partner/admin secret key required for privileged endpoints
 
   parameters:
     XAuthSecretKeyParam:

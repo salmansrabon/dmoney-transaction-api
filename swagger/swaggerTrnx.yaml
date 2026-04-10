@@ -2,10 +2,12 @@ openapi: 3.0.0
 info:
   title: Transaction API
   version: 1.0.0
-  description: API for managing transactions and user balances.
+  description: API for managing transactions, user balances, admin deposits, and Stripe bank cash-in.
 
 servers:
-  - url: http://localhost:3000
+  - url: https://dmoney.roadtocareer.net
+    description: Production server
+  - url: http://localhost:5000
     description: Local server
 
 paths:
@@ -113,7 +115,7 @@ paths:
           required: true
           schema:
             type: string
-          description: The account to get the statement for
+          description: The account (phone number) to get the statement for
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
@@ -149,14 +151,14 @@ paths:
 
   /transaction/limit/{account}:
     get:
-      summary: Get user limit by account
+      summary: Get user transaction limit by account
       parameters:
         - name: account
           in: path
           required: true
           schema:
             type: string
-          description: The account to get the user limit for
+          description: The account (phone number) to get the user limit for
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
@@ -195,7 +197,7 @@ paths:
           required: true
           schema:
             type: string
-          description: The account to get the user balance for
+          description: The account (phone number) to get the user balance for
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
         - BearerAuth: []
@@ -224,11 +226,18 @@ paths:
                   message:
                     type: string
                     example: User not found
+
   /transaction/deposit:
     post:
-      summary: Deposit money to an account.
-      description: Allows an authenticated user with the role of "Agent" to deposit money to another account with certain restrictions.
+      summary: Deposit money to an account (Agent → Customer)
+      description: |
+        Allows an authenticated user with the role of **Agent** to deposit money into a Customer account.
+        - Amount must be between the configured minimum and maximum (default 10–10,000 tk).
+        - A commission is earned by the Agent.
+        - The token owner must be the `from_account` holder.
       operationId: deposit
+      tags:
+        - Transactions
       parameters:
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
@@ -248,19 +257,19 @@ paths:
               properties:
                 from_account:
                   type: string
-                  example: "0123456789"
-                  description: The phone number of the account making the deposit.
+                  example: "01700000001"
+                  description: Phone number of the Agent account making the deposit.
                 to_account:
                   type: string
-                  example: "0987654321"
-                  description: The phone number of the account receiving the deposit.
+                  example: "01700000002"
+                  description: Phone number of the Customer account receiving the deposit.
                 amount:
                   type: number
                   example: 500
-                  description: The amount to deposit (must be between 10 and 10000).
+                  description: Amount to deposit (must be between 10 and 10,000 tk).
       responses:
         '201':
-          description: Deposit was successful.
+          description: Deposit was successful
           content:
             application/json:
               schema:
@@ -279,7 +288,7 @@ paths:
                     type: number
                     example: 487.5
         '208':
-          description: Non-successful conditions like insufficient balance, account mismatch, or role-based restrictions.
+          description: Non-successful conditions (insufficient balance, role mismatch, limit exceeded, etc.)
           content:
             application/json:
               schema:
@@ -292,7 +301,7 @@ paths:
                     type: number
                     example: 300.0
         '404':
-          description: Account not found.
+          description: Account not found
           content:
             application/json:
               schema:
@@ -301,173 +310,18 @@ paths:
                   message:
                     type: string
                     example: Account does not exist
-      tags:
-        - Transactions
-  /transaction/payment:
-    post:
-      summary: Process a payment transaction.
-      description: Allows an authenticated user (Customer or Agent) to make a payment to a Merchant account with payment fees and commission.
-      operationId: payment
-      parameters:
-        - $ref: '#/components/parameters/XAuthSecretKeyParam'
-      security:
-        - BearerAuth: []
-        - XAuthSecretKey: []
-      requestBody:
-        description: Payment transaction details.
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - from_account
-                - to_account
-                - amount
-              properties:
-                from_account:
-                  type: string
-                  example: "0123456789"
-                  description: The phone number of the account initiating the payment.
-                to_account:
-                  type: string
-                  example: "0987654321"
-                  description: The phone number of the account receiving the payment.
-                amount:
-                  type: number
-                  example: 500
-                  description: The amount to be paid (minimum 10 tk).
-      responses:
-        '201':
-          description: Payment was successful.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Payment successful
-                  trnxId:
-                    type: string
-                    example: "TXN123456"
-                  fee:
-                    type: number
-                    example: 5.0
-                  currentBalance:
-                    type: number
-                    example: 487.5
-        '208':
-          description: Non-successful conditions like insufficient balance, invalid roles, or mismatched accounts.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Insufficient balance
-                  currentBalance:
-                    type: number
-                    example: 300.0
-        '404':
-          description: Account not found.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Account does not exist
-      tags:
-        - Transactions
-
-  /transaction/sendmoney:
-    post:
-      summary: Send money between customer accounts.
-      description: Allows an authenticated customer to send money to another customer account, with a P2P fee applied.
-      operationId: sendMoney
-      parameters:
-        - $ref: '#/components/parameters/XAuthSecretKeyParam'
-      security:
-        - BearerAuth: []
-        - XAuthSecretKey: []
-      requestBody:
-        description: Send money transaction details.
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - from_account
-                - to_account
-                - amount
-              properties:
-                from_account:
-                  type: string
-                  example: "0123456789"
-                  description: The phone number of the account sending the money.
-                to_account:
-                  type: string
-                  example: "0987654321"
-                  description: The phone number of the account receiving the money.
-                amount:
-                  type: number
-                  example: 100
-                  description: The amount of money to send (minimum 10 tk).
-      responses:
-        '201':
-          description: Money transfer was successful.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Send money successful
-                  trnxId:
-                    type: string
-                    example: "TXN123456"
-                  fee:
-                    type: number
-                    example: 5.0
-                  currentBalance:
-                    type: number
-                    example: 1500.0
-        '208':
-          description: Non-successful conditions such as insufficient balance, role restrictions, or same account used for both sender and receiver.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: From account and to account cannot be same
-                  currentBalance:
-                    type: number
-                    example: 900.0
-        '404':
-          description: One or both accounts do not exist.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: From/To Account does not exist
-      tags:
-        - Transactions  
 
   /transaction/withdraw:
     post:
-      summary: Withdraw money from customer account via agent.
-      description: Allows an authenticated customer to withdraw money through an agent account. Withdrawals incur a fee.
+      summary: Withdraw money from a Customer account via an Agent
+      description: |
+        Allows an authenticated **Customer** to withdraw money through an **Agent** account.
+        - Minimum amount: 10 tk.
+        - A withdrawal fee is deducted from the customer's account.
+        - The token owner must be the `from_account` (Customer) holder.
       operationId: withdrawMoney
+      tags:
+        - Transactions
       parameters:
         - $ref: '#/components/parameters/XAuthSecretKeyParam'
       security:
@@ -487,19 +341,19 @@ paths:
               properties:
                 from_account:
                   type: string
-                  example: "0123456789"
-                  description: The phone number of the customer account.
+                  example: "01700000002"
+                  description: Phone number of the Customer account withdrawing money.
                 to_account:
                   type: string
-                  example: "0987654321"
-                  description: The phone number of the agent account.
+                  example: "01700000001"
+                  description: Phone number of the Agent account.
                 amount:
                   type: number
                   example: 100
-                  description: The amount of money to withdraw (minimum 10 tk).
+                  description: Amount to withdraw (minimum 10 tk).
       responses:
         '201':
-          description: Withdrawal was successful.
+          description: Withdrawal was successful
           content:
             application/json:
               schema:
@@ -518,7 +372,7 @@ paths:
                     type: number
                     example: 1500.0
         '208':
-          description: Non-successful conditions such as insufficient balance, minimum amount restrictions, or account role mismatches.
+          description: Non-successful conditions (insufficient balance, below minimum amount, role mismatch, etc.)
           content:
             application/json:
               schema:
@@ -531,7 +385,7 @@ paths:
                     type: number
                     example: 900.0
         '404':
-          description: One or both accounts do not exist.
+          description: One or both accounts do not exist
           content:
             application/json:
               schema:
@@ -540,19 +394,484 @@ paths:
                   message:
                     type: string
                     example: Account does not exist
+
+  /transaction/sendmoney:
+    post:
+      summary: Send money between Customer accounts (P2P)
+      description: |
+        Allows an authenticated **Customer** to send money to another Customer account.
+        - Minimum amount: 10 tk.
+        - A P2P fee is deducted from the sender.
+        - `from_account` and `to_account` cannot be the same.
+        - The token owner must be the `from_account` holder.
+      operationId: sendMoney
       tags:
-        - Transactions          
+        - Transactions
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      requestBody:
+        description: Send money transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "01700000002"
+                  description: Phone number of the Customer account sending money.
+                to_account:
+                  type: string
+                  example: "01700000003"
+                  description: Phone number of the Customer account receiving money.
+                amount:
+                  type: number
+                  example: 100
+                  description: Amount to send (minimum 10 tk).
+      responses:
+        '201':
+          description: Money transfer was successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Send money successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  fee:
+                    type: number
+                    example: 5.0
+                  currentBalance:
+                    type: number
+                    example: 1500.0
+        '208':
+          description: Non-successful conditions (insufficient balance, role restrictions, same account, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: From account and to account cannot be same
+                  currentBalance:
+                    type: number
+                    example: 900.0
+        '404':
+          description: One or both accounts do not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: From/To Account does not exist
+
+  /transaction/payment:
+    post:
+      summary: Process a payment to a Merchant account
+      description: |
+        Allows an authenticated **Customer** (or **Agent**) to make a payment to a **Merchant** account.
+        - Minimum amount: 10 tk.
+        - A payment fee is charged to the sender; Merchant earns a commission.
+        - The token owner must be the `from_account` holder.
+      operationId: payment
+      tags:
+        - Transactions
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      requestBody:
+        description: Payment transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "01700000002"
+                  description: Phone number of the account initiating the payment.
+                to_account:
+                  type: string
+                  example: "01700000004"
+                  description: Phone number of the Merchant account receiving the payment.
+                amount:
+                  type: number
+                  example: 500
+                  description: Amount to pay (minimum 10 tk).
+      responses:
+        '201':
+          description: Payment was successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Payment successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  fee:
+                    type: number
+                    example: 5.0
+                  currentBalance:
+                    type: number
+                    example: 487.5
+        '208':
+          description: Non-successful conditions (insufficient balance, invalid roles, mismatched accounts, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Insufficient balance
+                  currentBalance:
+                    type: number
+                    example: 300.0
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Account does not exist
+
+  /transaction/adminDeposit:
+    post:
+      summary: Admin deposit to the SYSTEM account
+      description: |
+        Allows an authenticated **Admin** user to deposit money into the **SYSTEM** account.
+        - `from_account` must belong to an Admin role user (and match the authenticated token).
+        - `to_account` must be `SYSTEM` (the special system account phone number).
+        - No minimum/maximum amount restrictions.
+        - No balance check — Admin can always deposit to SYSTEM.
+      operationId: adminDeposit
+      tags:
+        - Transactions
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      requestBody:
+        description: Admin deposit transaction details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_account
+                - to_account
+                - amount
+              properties:
+                from_account:
+                  type: string
+                  example: "admin@dmoney.com"
+                  description: Phone number (or email) of the Admin account.
+                to_account:
+                  type: string
+                  example: "SYSTEM"
+                  description: Must be "SYSTEM" — the system account identifier.
+                amount:
+                  type: number
+                  example: 100000
+                  description: Amount to deposit (must be greater than 0).
+      responses:
+        '201':
+          description: Admin deposit to SYSTEM was successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Deposit to SYSTEM account successful
+                  trnxId:
+                    type: string
+                    example: "TXN123456"
+                  amount:
+                    type: number
+                    example: 100000
+        '400':
+          description: Invalid amount or to_account is not SYSTEM
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Admin can only deposit to the SYSTEM account. Please enter 'SYSTEM' as the account phone number."
+        '403':
+          description: Caller is not Admin or token does not match from_account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Only Admin can use this deposit endpoint
+        '404':
+          description: from_account or to_account does not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: From account does not exist
+
+  /transaction/stripe/create-intent:
+    post:
+      summary: Create a Stripe PaymentIntent for bank cash-in (Customer only)
+      description: |
+        Validates the deposit amount against configured limits and creates a **Stripe PaymentIntent**.
+        Returns a `clientSecret` that the frontend uses to render Stripe's card payment form.
+        - Only **Customer** accounts with **active** status can use this endpoint.
+        - Amount must respect the Deposit commission min/max configuration.
+        - Customer wallet cap is also checked to prevent exceeding the maximum balance.
+      operationId: stripeCreateIntent
+      tags:
+        - Stripe Cash In
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+              properties:
+                amount:
+                  type: number
+                  example: 500
+                  description: Amount to cash in (in Taka). Must be within allowed min/max deposit limits.
+      responses:
+        '200':
+          description: PaymentIntent created successfully — use clientSecret on the frontend
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientSecret:
+                    type: string
+                    description: Stripe PaymentIntent client secret for frontend card form
+                    example: "pi_xxxxx_secret_yyyyy"
+                  amount:
+                    type: number
+                    example: 500
+                  minAmount:
+                    type: number
+                    example: 10
+                  maxAmount:
+                    type: number
+                    example: 10000
+        '208':
+          description: Wallet cap exceeded — cannot cash in the requested amount
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Limit exceeded. You can cash in a maximum of 3000.00 tk."
+        '400':
+          description: Invalid amount or amount outside allowed limits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Minimum cash-in amount is 10 tk"
+        '403':
+          description: Only active Customer accounts can use this endpoint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Only customers can use bank cash-in
+        '404':
+          description: Customer account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Customer account not found
+        '500':
+          description: Stripe or server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to create payment intent
+
+  /transaction/stripe/confirm:
+    post:
+      summary: Confirm a Stripe bank cash-in and credit customer wallet
+      description: |
+        After the frontend successfully confirms the card payment via Stripe.js, submit the
+        `paymentIntentId` to this endpoint to:
+        1. Verify the PaymentIntent succeeded on Stripe.
+        2. Verify ownership (anti-spoofing).
+        3. Prevent double-processing (idempotency guard).
+        4. Write debit (SYSTEM) and credit (Customer) ledger entries.
+
+        The `trnxId` returned is the Stripe PaymentIntent ID for full traceability.
+      operationId: stripeConfirmCashIn
+      tags:
+        - Stripe Cash In
+      parameters:
+        - $ref: '#/components/parameters/XAuthSecretKeyParam'
+      security:
+        - BearerAuth: []
+        - XAuthSecretKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentIntentId
+              properties:
+                paymentIntentId:
+                  type: string
+                  description: The Stripe PaymentIntent ID returned after frontend card confirmation
+                  example: "pi_3Qk9abcdefghij1234"
+      responses:
+        '201':
+          description: Cash-in confirmed and wallet credited successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cash in successful
+                  trnxId:
+                    type: string
+                    example: "pi_3Qk9abcdefghij1234"
+                  amount:
+                    type: number
+                    example: 500
+                  currentBalance:
+                    type: number
+                    example: 1500.0
+        '208':
+          description: Payment has already been processed (idempotency guard)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: This payment has already been processed
+        '400':
+          description: Missing paymentIntentId or Stripe payment not completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Payment not completed. Stripe status: requires_payment_method"
+        '403':
+          description: PaymentIntent does not belong to the authenticated customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Payment intent does not belong to this account
+        '404':
+          description: Customer account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Customer account not found
+        '500':
+          description: Stripe retrieval or server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to process cash in
+
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    
+      description: JWT token obtained from /user/login or /user/verify-otp
+
     XAuthSecretKey:
       type: apiKey
       in: header
       name: X-AUTH-SECRET-KEY
+      description: Partner/admin secret key required for transaction API authentication
 
   parameters:
     XAuthSecretKeyParam:
