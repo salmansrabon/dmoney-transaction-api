@@ -1,5 +1,6 @@
 const { Sequelize, DataTypes, Op } = require('sequelize');
 const { sequelize } = require('./db');
+const { hashPassword } = require('../utils/hash');
 
 const Users = sequelize.define('Users', {
     name: {
@@ -68,7 +69,7 @@ const predefinedUsers = [
     {
         name: "SYSTEM",
         email: "system@dmoney.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "SYSTEM",
         nid: "123456789",
         role: "Agent",
@@ -78,7 +79,7 @@ const predefinedUsers = [
     {
         name: "Admin",
         email: "admin@dmoney.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "01686606909",
         nid: "123456789",
         role: "Admin",
@@ -88,7 +89,7 @@ const predefinedUsers = [
     {
         name: "Test Agent",
         email: "salmansrabon+agent@gmail.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "01686606901",
         nid: "123456789",
         role: "Agent",
@@ -98,7 +99,7 @@ const predefinedUsers = [
     {
         name: "Test Customer 1",
         email: "salmansrabon+customer1@gmail.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "01686606902",
         nid: "123456789",
         role: "Customer",
@@ -108,7 +109,7 @@ const predefinedUsers = [
     {
         name: "Test Customer 2",
         email: "salmansrabon+customer2@gmail.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "01686606903",
         nid: "123456789",
         role: "Customer",
@@ -118,7 +119,7 @@ const predefinedUsers = [
     {
         name: "Test Merchant",
         email: "salmansrabon+merchant@gmail.com",
-        password: "1234",
+        password: hashPassword("1234"),
         phone_number: "01686606905",
         nid: "123456789",
         role: "Merchant",

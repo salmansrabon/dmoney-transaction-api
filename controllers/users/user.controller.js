@@ -1,5 +1,6 @@
 const { Users } = require('../../sequelizeModel/Users.js');
 const { Roles } = require('../../sequelizeModel/Role.js');
+const { hashPassword } = require('../../utils/hash');
 const { Transactions } = require('../../sequelizeModel/Transactions.js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
@@ -179,6 +180,9 @@ exports.createUser = async (req, res) => {
             console.error("Validation error:", error.details[0].message);
             return res.status(400).json({ message: error.details[0].message });
         }
+
+        // Hash password before storing
+        newUser.password = hashPassword(newUser.password);
 
         // Create the user in the database
         const user = await Users.create(newUser);
@@ -376,7 +380,7 @@ exports.registerUser = async (req, res) => {
         }
 
         // Create user with default status 'pending'
-        const user = await Users.create({ name, email, password, phone_number, nid, role, status: 'pending' });
+        const user = await Users.create({ name, email, password: hashPassword(password), phone_number, nid, role, status: 'pending' });
 
         // Send registration confirmation email (non-blocking — does not fail the request)
         mailer(
@@ -420,7 +424,7 @@ exports.loginUser = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        if (user.password !== password) {
+        if (user.password !== hashPassword(password)) {
             return res.status(401).json({ message: "Password incorrect" });
         }
 

@@ -8,6 +8,7 @@
 const { Users } = require('../../sequelizeModel/Users.js');
 const { Op } = require('sequelize');
 const crypto = require('crypto');
+const { hashPassword } = require('../../utils/hash');
 const { sendEmail } = require('../../services/emailHelper');
 
 // ── Request password reset ────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ exports.resetPassword = async (req, res) => {
 
     // Update password and clear the reset token
     await Users.update(
-      { password, reset_token: null, reset_token_expires: null },
+      { password: hashPassword(password), reset_token: null, reset_token_expires: null },
       { where: { id: user.id } }
     );
 
