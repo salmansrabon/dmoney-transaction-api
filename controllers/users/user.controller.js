@@ -186,7 +186,8 @@ exports.createUser = async (req, res) => {
 
         // Create the user in the database
         const user = await Users.create(newUser);
-        res.status(201).json({ message: "User created", user });
+        const { password: _, ...safeUser } = user.toJSON();
+        res.status(201).json({ message: "User created", user: safeUser });
 
     } catch (err) {
         console.error("Error creating user:", err);
@@ -231,6 +232,10 @@ exports.updateUser = async (req, res) => {
         const { error } = await exports.validateUser(updatedUser);
         if (error) {
             return res.status(400).json({ message: error.details[0].message });
+        }
+
+        if (updatedUser.password) {
+            updatedUser.password = hashPassword(updatedUser.password);
         }
 
         await Users.update(updatedUser, { where: { id } });
@@ -285,6 +290,10 @@ exports.partialUpdateUser = async (req, res) => {
             if (emailError) {
                 return res.status(400).json({ message: emailError.message });
             }
+        }
+
+        if (updatedUser.password) {
+            updatedUser.password = hashPassword(updatedUser.password);
         }
 
         await Users.update(updatedUser, { where: { id } });
