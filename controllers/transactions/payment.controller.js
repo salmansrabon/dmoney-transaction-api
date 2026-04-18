@@ -19,7 +19,6 @@ exports.handlePayment = async (req, res, next) => {
     // Load commission rules from DB
     const config          = await Commission.getConfig('Payment');
     const feeRule         = config.rules.find(r => r.recipient === 'SYSTEM');
-    const commissionRate  = config.merchantCommissionRate || 0.025;
     const minAmount       = config.minTxnAmount           || 10;
 
     const from_account_exists = await Users.findOne({ where: { phone_number: from_account } });
@@ -63,7 +62,6 @@ exports.handlePayment = async (req, res, next) => {
 
         // Calculate payment fee using DB rule (respects min_fee floor)
         var paymentFee = feeRule ? Commission.calcFee(feeRule, finalAmount) : Math.max(finalAmount * 0.01, 5);
-        var commission = commissionRate * finalAmount;
 
         if ((fromRole === "Customer" || fromRole === "Agent") && toRole === "Merchant") {
 
@@ -123,7 +121,7 @@ exports.handlePayment = async (req, res, next) => {
                             description:      "Payment",
                             trnxId:           trnxId,
                             debit:            0,
-                            credit:           finalAmount + commission,
+                            credit:           finalAmount,
                             transaction_type: 'Payment'
                         };
                         const creditTrnxToSystem = {
