@@ -437,6 +437,10 @@ exports.loginUser = async (req, res) => {
             return res.status(401).json({ message: "Password incorrect" });
         }
 
+        if (user.status !== 'active') {
+            return res.status(403).json({ message: "Account is not active" });
+        }
+
         const userRole       = user.getDataValue('role');
         const userPhone      = user.getDataValue('phone_number') || '';
         const isSystemAccount = userPhone.toUpperCase() === 'SYSTEM';
