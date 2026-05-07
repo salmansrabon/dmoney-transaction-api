@@ -8,8 +8,24 @@
 const { Users } = require('../../sequelizeModel/Users.js');
 const { Op } = require('sequelize');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { hashPassword } = require('../../utils/hash');
 const { sendEmail } = require('../../services/emailHelper');
+const { sendPersonalEmail } = require('../../services/gmailPersonalHelper');
+
+// Path to the service account key — checked at call time
+const SERVICE_ACCOUNT_FILE = path.join(__dirname, '../../config/gmail-service-account.json');
+
+/**
+ * Unified mailer: uses the Google Service Account when the key file is present,
+ * otherwise falls back to personal Gmail SMTP (Nodemailer).
+ */
+function mailer(to, subject, text, contentType) {
+    return fs.existsSync(SERVICE_ACCOUNT_FILE)
+        ? sendEmail(to, subject, text, contentType)
+        : sendPersonalEmail(to, subject, text, contentType);
+}
 
 // ── Request password reset ────────────────────────────────────────────────────
 exports.forgotPassword = async (req, res) => {
@@ -76,7 +92,7 @@ exports.forgotPassword = async (req, res) => {
     // Always log the link to console (useful when SEND_MAIL=false)
     console.log(`🔑 Password reset link for ${userEmail}: ${resetLink}`);
 
-    sendEmail(userEmail, 'dMoney — Password Reset Request', emailBody)
+    mailer(userEmail, 'dMoney — Password Reset Request', emailBody)
       .catch(err => console.error('Password reset email error:', err));
 
     return res.status(200).json({
