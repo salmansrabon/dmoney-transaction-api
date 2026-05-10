@@ -523,15 +523,20 @@ exports.verifyOtp = async (req, res) => {
             return res.status(400).json({ message: 'No OTP found. Please login again to request a new OTP.' });
         }
 
-        // Check expiry first
-        if (new Date() > new Date(otpExpire)) {
-            await Users.update({ otp: null, otp_expire: null }, { where: { id: user.id } });
-            return res.status(401).json({ message: 'OTP has expired. Please login again to receive a new OTP.' });
-        }
+        // Dev bypass: ?env=dev with DEFAULT_OTP skips expiry and match checks
+        const isDevBypass = req.query.env === 'dev' && String(otp).trim() === process.env.DEFAULT_OTP;
 
-        // Check OTP match
-        if (storedOtp !== String(otp).trim()) {
-            return res.status(401).json({ message: 'Invalid OTP. Please try again.' });
+        if (!isDevBypass) {
+            // Check expiry first
+            if (new Date() > new Date(otpExpire)) {
+                await Users.update({ otp: null, otp_expire: null }, { where: { id: user.id } });
+                return res.status(401).json({ message: 'OTP has expired. Please login again to receive a new OTP.' });
+            }
+
+            // Check OTP match
+            if (storedOtp !== String(otp).trim()) {
+                return res.status(401).json({ message: 'Invalid OTP. Please try again.' });
+            }
         }
 
         // ✅ OTP valid — clear it and issue JWT
