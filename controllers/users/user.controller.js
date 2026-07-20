@@ -131,7 +131,7 @@ exports.searchUsersByRole = async (req, res) => {
       limit: Number(limit),
       offset,
       order: [['id', 'DESC']],
-      attributes: ['id', 'name', 'email', 'phone_number', 'nid', 'role', 'createdAt'],
+      attributes: ['id', 'name', 'email', 'phone_number', 'nid', 'role', 'status', 'createdAt'],
     });
 
     res.status(200).json({
