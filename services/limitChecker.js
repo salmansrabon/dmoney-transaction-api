@@ -7,10 +7,10 @@
  * Limits are enforced on the customer's DEBIT rows only
  * (account = customerPhone, debit > 0, transaction_type IN ('SendMoney','Payment','Withdraw')).
  *
- * Usage:
+ * Usage (inside the sequelize.transaction callback, right after the FOR UPDATE balance lock):
  *   const { checkCustomerLimits } = require('../../services/limitChecker');
- *   const check = await checkCustomerLimits(customerPhone, amount);
- *   if (!check.allowed) return res.status(400).json({ message: check.message, details: check.details });
+ *   const check = await checkCustomerLimits(customerPhone, totalDebit, t);
+ *   if (!check.allowed) { throw Object.assign(new Error('LIMIT_EXCEEDED'), { limitCheck: check }); }
  */
 
 const { Op, fn, col, literal } = require('sequelize');
@@ -45,9 +45,10 @@ function startOfMonth() {
  *
  * @param {string} customerPhone  - The customer's phone number (= account field)
  * @param {Date}   periodStart    - Start of the window to query
+ * @param {import('sequelize').Transaction} [transaction] - Run the read inside this transaction
  * @returns {{ usedAmount: number, usedCount: number }}
  */
-async function getUsage(customerPhone, periodStart) {
+async function getUsage(customerPhone, periodStart, transaction) {
     const [rows] = await sequelize.query(
         `SELECT
              COALESCE(SUM(debit), 0)               AS usedAmount,
@@ -63,7 +64,8 @@ async function getUsage(customerPhone, periodStart) {
                 types: OUTGOING_TYPES,
                 since: periodStart
             },
-            type: sequelize.QueryTypes.SELECT
+            type: sequelize.QueryTypes.SELECT,
+            transaction
         }
     );
 
@@ -84,6 +86,9 @@ async function getUsage(customerPhone, periodStart) {
  *
  * @param {string} customerPhone  - Sender's phone number
  * @param {number} totalDebit     - Total amount that will be debited (amount + fee)
+ * @param {import('sequelize').Transaction} [transaction] - Callers MUST pass the ledger transaction
+ *        after locking the sender's rows (SELECT ... FOR UPDATE). Calling this before the lock lets
+ *        concurrent requests all read the same pre-transfer usage and bypass the limit.
  *
  * @returns {Promise<{
  *   allowed: boolean,
@@ -99,10 +104,11 @@ async function getUsage(customerPhone, periodStart) {
  *   }
  * }>}
  */
-async function checkCustomerLimits(customerPhone, totalDebit) {
+async function checkCustomerLimits(customerPhone, totalDebit, transaction) {
     // Load all active limits for Customer role
     const limits = await TransactionLimit.findAll({
-        where: { role: 'Customer', is_active: 1 }
+        where: { role: 'Customer', is_active: 1 },
+        transaction
     });
 
     if (!limits || limits.length === 0) {
@@ -116,7 +122,7 @@ async function checkCustomerLimits(customerPhone, totalDebit) {
         const maxCount   = parseInt(limitRow.getDataValue('max_count'), 10);
 
         const periodStart = period === 'daily' ? startOfDay() : startOfMonth();
-        const { usedAmount, usedCount } = await getUsage(customerPhone, periodStart);
+        const { usedAmount, usedCount } = await getUsage(customerPhone, periodStart, transaction);
 
         const remainingAmount = maxAmount - usedAmount;
         const remainingCount  = maxCount  - usedCount;

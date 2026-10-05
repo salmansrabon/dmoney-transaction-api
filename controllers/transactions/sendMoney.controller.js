@@ -55,17 +55,6 @@ exports.handleSendMoney = async (req, res, next) => {
 
         if (fromRole === "Customer" && toRole === "Customer") {
 
-            // ── Daily / Monthly limit check ──────────────────────────────────
-            // Pass the full debit (amount + fee) so the check uses the same
-            // basis as the historical SUM(debit) query in limitChecker.js.
-            const limitCheck = await checkCustomerLimits(from_account, amt + p2pFee);
-            if (!limitCheck.allowed) {
-                return res.status(400).json({
-                    message: limitCheck.message,
-                    details: limitCheck.details
-                });
-            }
-
             // ── Minimum amount check (no DB needed — do it before the transaction) ──
             if (amt < minAmount) {
                 return res.status(400).json({ message: `Minimum amount is ${minAmount} tk` });
@@ -85,6 +74,18 @@ exports.handleSendMoney = async (req, res, next) => {
                             { replacements: [from_account], transaction: t, type: sequelize.QueryTypes.SELECT }
                         );
                         const currentBalance = parseFloat(balanceRows[0].Balance) || 0;
+
+                        // ── Daily / Monthly limit check ──────────────────────────
+                        // Must run AFTER the lock above so concurrent requests from the
+                        // same sender are serialised and each sees the previous one's debit.
+                        // Pass the full debit (amount + fee) so the check uses the same
+                        // basis as the historical SUM(debit) query in limitChecker.js.
+                        const limitCheck = await checkCustomerLimits(from_account, amt + p2pFee, t);
+                        if (!limitCheck.allowed) {
+                            const err = new Error('LIMIT_EXCEEDED');
+                            err.limitCheck = limitCheck;
+                            throw err;
+                        }
 
                         if (currentBalance <= 0 || amt + p2pFee > currentBalance) {
                             // Throw to trigger automatic rollback
@@ -139,6 +140,12 @@ exports.handleSendMoney = async (req, res, next) => {
                 });
 
             } catch (err) {
+                if (err.message === 'LIMIT_EXCEEDED') {
+                    return res.status(400).json({
+                        message: err.limitCheck.message,
+                        details: err.limitCheck.details
+                    });
+                }
                 if (err.message === 'INSUFFICIENT_BALANCE') {
                     return res.status(208).json({
                         message:        "Insufficient balance",
