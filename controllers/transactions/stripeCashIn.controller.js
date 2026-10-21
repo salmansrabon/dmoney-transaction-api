@@ -1,5 +1,8 @@
 const Stripe = require('stripe');
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+// Created on first use: Stripe() throws if STRIPE_SECRET_KEY is missing, and doing that at import
+// time would crash the whole API (e.g. on Vercel). Now only the Stripe endpoints fail without a key.
+let stripeClient;
+const getStripe = () => stripeClient || (stripeClient = Stripe(process.env.STRIPE_SECRET_KEY));
 const { Transactions } = require('../../sequelizeModel/Transactions');
 const { Users } = require('../../sequelizeModel/Users');
 const { Commission } = require('../../sequelizeModel/Commission');
@@ -86,7 +89,7 @@ exports.createPaymentIntent = async (req, res) => {
 
         // ── 5. Create Stripe PaymentIntent ────────────────────────────────────
         // BDT uses 2 decimal places → multiply by 100 to get paisa
-        const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntent = await getStripe().paymentIntents.create({
             amount:   Math.round(amt * 100),
             currency: 'bdt',
             metadata: {
@@ -141,7 +144,7 @@ exports.confirmCashIn = async (req, res) => {
         const customerPhone = customer.getDataValue('phone_number');
 
         // ── 2. Retrieve & verify PaymentIntent from Stripe ────────────────────
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        const paymentIntent = await getStripe().paymentIntents.retrieve(paymentIntentId);
 
         if (paymentIntent.status !== 'succeeded') {
             return res.status(400).json({
