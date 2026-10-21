@@ -23,10 +23,14 @@ const host = process.env.DB_HOST;
 const port=process.env.DB_PORT || 3306;
 const password = process.env.DB_PASSWORD;
 
+// Sequelize loads the driver with a dynamic require(), which Vercel's bundler cannot trace,
+// so mysql2 is left out of the deployed function ("Please install mysql2 package manually").
+// Passing the module explicitly makes it a static require that gets bundled.
 const sequelize = new Sequelize(db_name, db_user, password, {
     host: host,
     port: port,
     dialect: 'mysql',
+    dialectModule: require('mysql2'),
     logging: false
 });
 
