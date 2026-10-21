@@ -1,6 +1,21 @@
 const { Sequelize } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
 //require('custom-env').env()
 require('custom-env').env('dev')
+
+// jwtMiddleware.js runs dotenv.config() (.env) before this file loads, and neither loader
+// overwrites a variable that is already set. That let the DB_* values in .env (e.g. localhost)
+// silently beat the ones in .env.dev. When .env.dev exists, its DB_* values always win.
+// No .env.dev (e.g. inside Docker) -> process.env is left untouched.
+const devEnvFile = path.join(__dirname, '..', '.env.dev');
+if (fs.existsSync(devEnvFile)) {
+    const devEnv = dotenv.parse(fs.readFileSync(devEnvFile));
+    for (const key of Object.keys(devEnv)) {
+        if (key.startsWith('DB_')) process.env[key] = devEnv[key];
+    }
+}
 
 const db_name = process.env.DB_NAME;
 const db_user = process.env.DB_USER;
