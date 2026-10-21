@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: dmoney-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-1234}
+      MYSQL_DATABASE: ${DB_NAME:-dmoneydb}
+    ports:
+      # 3308 on the host so it does not clash with a local MySQL (3306) or other Docker MySQLs (3307)
+      - "3308:3306"
+    volumes:
+      - dmoney_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  dmoney-api:
+    build: .
+    container_name: dmoney-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # Later files override earlier ones; .env is optional (secrets, mail, Stripe).
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    # `environment` wins over env_file, so the API always talks to the compose MySQL.
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-dmoneydb}
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-1234}
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - dmoney_uploads:/app/uploads
+
+volumes:
+  dmoney_mysql_data:
+  dmoney_uploads:
