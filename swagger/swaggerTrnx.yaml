@@ -486,7 +486,7 @@ paths:
       description: |
         Allows an authenticated **Customer** (or **Agent**) to make a payment to a **Merchant** account.
         - Minimum amount: 10 tk.
-        - A payment fee is charged to the sender; Merchant earns a commission.
+        - A payment fee is charged to the sender and credited to SYSTEM; the Merchant receives the payment amount only (no commission).
         - The token owner must be the `from_account` holder.
       operationId: payment
       tags:

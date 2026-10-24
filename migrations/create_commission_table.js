@@ -78,12 +78,9 @@ async function migrate() {
           ('SendMoney', 'Service Fee',         'flat',       5.000000, NULL, NULL,  'SYSTEM',   'from_account', 10.00, NULL,     1, NOW(), NOW()),
 
           -- Payment: System takes 1% (min 5 BDT) from payer
-          ('Payment',   'Service Fee',         'percentage', 0.010000, 5.00, NULL,  'SYSTEM',   'from_account', 10.00, NULL,     1, NOW(), NOW()),
-
-          -- Payment: Merchant earns 2.5% commission on top
-          ('Payment',   'Merchant Commission', 'percentage', 0.025000, NULL, NULL,  'Merchant', 'platform',     10.00, NULL,     1, NOW(), NOW());
+          ('Payment',   'Service Fee',         'percentage', 0.010000, 5.00, NULL,  'SYSTEM',   'from_account', 10.00, NULL,     1, NOW(), NOW());
       `);
-      console.log("✅ Default commission rules seeded (6 rows).");
+      console.log("✅ Default commission rules seeded (5 rows).");
     }
 
   } catch (err) {
